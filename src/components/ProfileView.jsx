@@ -3,13 +3,15 @@ import {
   ShieldCheck, AlertTriangle, Building, CreditCard, Users, HeartPulse, 
   FileCheck, Download, Plus, CheckCircle, ExternalLink, Phone, Calendar, 
   Info, QrCode, Stethoscope, AlertCircle, Trash2, ArrowRight, FileText, 
-  Image, Bed, Clock 
+  Image, Bed, Clock, Bell, ShoppingBag, Lock, ShieldAlert, Sparkles, 
+  Check, RefreshCw, X 
 } from 'lucide-react';
 import { 
   formatCurrencyINR, maskAadhaar, calculateAge, 
   formatAadhaar, isValidAadhaar 
 } from '../utils/helpers';
 import { POPULAR_GOVT_SCHEMES, POPULAR_INSURERS, COMMON_TPAS } from '../data/initialData';
+import { EMPANELED_PHARMACY_PARTNERS, DIAGNOSTIC_TEST_CATALOG } from '../data/catalogData';
 import ReportViewerModal from './ReportViewerModal';
 
 export default function ProfileView({ 
@@ -17,7 +19,9 @@ export default function ProfileView({
   onUpdateProfile, 
   onOpenDoctorMode 
 }) {
-  const [activeTab, setActiveTab] = useState('schemes');
+  const [activeTab, setActiveTab] = useState('schemes'); // 'schemes', 'medications', 'test_orders', 'reports', 'consent', 'guardian'
+  
+  // Modals
   const [showAddSchemeModal, setShowAddSchemeModal] = useState(false);
   const [showAddMediclaimModal, setShowAddMediclaimModal] = useState(false);
   const [showAddAllergyModal, setShowAddAllergyModal] = useState(false);
@@ -26,6 +30,23 @@ export default function ProfileView({
   const [selectedSchemeForPreAuth, setSelectedSchemeForPreAuth] = useState(null);
   const [preAuthSuccessData, setPreAuthSuccessData] = useState(null);
   const [selectedReportForPatientView, setSelectedReportForPatientView] = useState(null);
+
+  // E-Pharmacy Order Modal State
+  const [showEPharmacyModal, setShowEPharmacyModal] = useState(false);
+  const [selectedPharmacy, setSelectedPharmacy] = useState(EMPANELED_PHARMACY_PARTNERS[0]);
+  const [orderDeliveryAddress, setOrderDeliveryAddress] = useState(profile.address || 'Flat 402, Green Meadows, Sector 62, Noida');
+  const [orderPlacedData, setOrderPlacedData] = useState(null);
+
+  // Lab Booking Modal State
+  const [showLabBookingModal, setShowLabBookingModal] = useState(false);
+  const [selectedTestToBook, setSelectedTestToBook] = useState(null);
+  const [selectedLabChoice, setSelectedLabChoice] = useState(null);
+  const [bookingMode, setBookingMode] = useState('Home Collection');
+  const [bookingDate, setBookingDate] = useState('Tomorrow Morning (07:30 AM)');
+  const [bookingConfirmedData, setBookingConfirmedData] = useState(null);
+
+  // Consent Management State
+  const [selectedDuration, setSelectedDuration] = useState('7 Days');
 
   // New Scheme Form State
   const [newScheme, setNewScheme] = useState({
@@ -76,7 +97,94 @@ export default function ProfileView({
     treatingDoctor: 'Dr. Vivek Mehra (Chief Cardiologist)'
   });
 
-  // Handlers for adding items
+  // Toggle Pill Reminder
+  const handleToggleReminder = (reminderId) => {
+    const updated = (profile.medicationReminders || []).map(r => {
+      if (r.id === reminderId) {
+        return { ...r, isActive: !r.isActive };
+      }
+      return r;
+    });
+    onUpdateProfile({ ...profile, medicationReminders: updated });
+  };
+
+  // Mark Pill as Taken
+  const handleMarkTaken = (reminderId) => {
+    const nowStr = `Today ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+    const updated = (profile.medicationReminders || []).map(r => {
+      if (r.id === reminderId) {
+        return { ...r, lastTaken: nowStr, history: 'Taken' };
+      }
+      return r;
+    });
+    onUpdateProfile({ ...profile, medicationReminders: updated });
+    alert('Medication marked as taken! Pill adherence logged in your health diary.');
+  };
+
+  // E-Pharmacy Order Placement
+  const handlePlacePharmacyOrder = (e) => {
+    e.preventDefault();
+    const orderRef = `RX-ORD-${Math.floor(100000 + Math.random() * 900000)}`;
+    setOrderPlacedData({
+      orderRef,
+      partner: selectedPharmacy.name,
+      deliveryTime: selectedPharmacy.deliveryTime,
+      address: orderDeliveryAddress,
+      itemCount: profile.medications?.length || 2,
+      estimatedTotal: '₹340 (After 18% Discount applied)'
+    });
+  };
+
+  // Book Diagnostic Lab Appointment
+  const handleConfirmLabBooking = (e) => {
+    e.preventDefault();
+    const bookingRef = `LAB-BK-${Math.floor(100000 + Math.random() * 900000)}`;
+    
+    // Update order status in profile
+    const updatedOrders = (profile.pendingTestOrders || []).map(o => {
+      if (o.id === selectedTestToBook.id) {
+        return { ...o, status: `Scheduled (${bookingMode} - Ref: ${bookingRef})` };
+      }
+      return o;
+    });
+
+    onUpdateProfile({ ...profile, pendingTestOrders: updatedOrders });
+
+    setBookingConfirmedData({
+      bookingRef,
+      testName: selectedTestToBook.testName,
+      lab: selectedLabChoice?.labName || 'Dr. Lal PathLabs',
+      price: selectedLabChoice?.price || 450,
+      mode: bookingMode,
+      date: bookingDate
+    });
+  };
+
+  // Consent Action: Revoke Access
+  const handleRevokeConsent = (consentId) => {
+    const updated = (profile.consentLogs || []).map(c => {
+      if (c.id === consentId) {
+        return { ...c, status: 'Revoked by Patient', validUntil: 'Revoked' };
+      }
+      return c;
+    });
+    onUpdateProfile({ ...profile, consentLogs: updated });
+    alert('Access revoked! The physician/hospital can no longer access your longitudinal records.');
+  };
+
+  // Consent Action: Approve Request
+  const handleApproveConsent = (consentId) => {
+    const updated = (profile.consentLogs || []).map(c => {
+      if (c.id === consentId) {
+        return { ...c, status: 'Approved', validUntil: `Active (${selectedDuration})` };
+      }
+      return c;
+    });
+    onUpdateProfile({ ...profile, consentLogs: updated });
+    alert(`Access granted for ${selectedDuration} under Account Aggregator framework.`);
+  };
+
+  // Add Scheme
   const handleAddScheme = (e) => {
     e.preventDefault();
     if (!newScheme.beneficiaryId.trim()) return;
@@ -102,16 +210,9 @@ export default function ProfileView({
     });
 
     setShowAddSchemeModal(false);
-    setNewScheme({
-      schemeName: 'Ayushman Bharat - PM-JAY',
-      category: 'Central',
-      beneficiaryId: '',
-      state: 'Pan-India',
-      cashlessCoverageLimit: 500000,
-      familyHeadName: profile.fullName
-    });
   };
 
+  // Add Mediclaim
   const handleAddMediclaim = (e) => {
     e.preventDefault();
     if (!newMediclaim.policyNumber.trim()) return;
@@ -143,52 +244,6 @@ export default function ProfileView({
     setShowAddMediclaimModal(false);
   };
 
-  const handleAddAllergy = (e) => {
-    e.preventDefault();
-    if (!newAllergy.substance.trim()) return;
-
-    const item = {
-      id: `all-${Date.now()}`,
-      substance: newAllergy.substance,
-      severity: newAllergy.severity,
-      reaction: newAllergy.reaction || 'Severe adverse clinical reaction',
-      diagnosedBy: newAllergy.diagnosedBy || 'Attending Physician',
-      dateRecorded: new Date().toISOString().split('T')[0]
-    };
-
-    onUpdateProfile({
-      ...profile,
-      allergies: [...(profile.allergies || []), item]
-    });
-
-    setShowAddAllergyModal(false);
-    setNewAllergy({ substance: '', severity: 'HIGH ALERT (Severe)', reaction: '', diagnosedBy: '' });
-  };
-
-  const handleAddMedication = (e) => {
-    e.preventDefault();
-    if (!newMed.medicineName.trim()) return;
-
-    const item = {
-      id: `med-reg-${Date.now()}`,
-      medicineName: newMed.medicineName,
-      dosage: newMed.dosage || '1 dose daily',
-      condition: newMed.condition || 'General Treatment',
-      prescribedHospital: newMed.prescribedHospital || 'Multi-Speciality Hospital',
-      doctorName: newMed.doctorName || 'Medical Officer',
-      startDate: new Date().toISOString().split('T')[0],
-      status: 'Active'
-    };
-
-    onUpdateProfile({
-      ...profile,
-      medications: [...(profile.medications || []), item]
-    });
-
-    setShowAddMedModal(false);
-    setNewMed({ medicineName: '', dosage: '', condition: '', prescribedHospital: '', doctorName: '' });
-  };
-
   // Cashless Pre-Auth Claim Trigger
   const handleOpenPreAuth = (scheme) => {
     setSelectedSchemeForPreAuth(scheme);
@@ -200,10 +255,8 @@ export default function ProfileView({
     e.preventDefault();
     const approvedAmount = Number(preAuthForm.estimatedAmount);
     const newBal = Math.max(0, (selectedSchemeForPreAuth.availableBalance || 0) - approvedAmount);
-
     const refNumber = `PREAUTH-VT-${Math.floor(100000 + Math.random() * 900000)}`;
 
-    // Update scheme balance in profile
     const updatedSchemes = (profile.govtSchemes || []).map(s => {
       if (s.id === selectedSchemeForPreAuth.id) {
         return {
@@ -215,7 +268,6 @@ export default function ProfileView({
       return s;
     });
 
-    // Add entry into hospital history
     const newHistoryEntry = {
       id: `hist-${Date.now()}`,
       hospitalName: preAuthForm.hospitalName,
@@ -223,7 +275,7 @@ export default function ProfileView({
       dischargeDate: 'Ongoing / Active Admission',
       diagnosis: preAuthForm.procedureName,
       treatingDoctor: preAuthForm.treatingDoctor,
-      cashlessProcessedUnder: `${selectedSchemeForPreAuth.schemeName} (Cashless Pre-Auth Ref: ${refNumber})`
+      cashlessProcessedUnder: `${selectedSchemeForPreAuth.schemeName} (Pre-Auth Ref: ${refNumber})`
     };
 
     onUpdateProfile({
@@ -256,7 +308,7 @@ export default function ProfileView({
             </div>
             <div className="card-logo-right">
               <span className="chip-icon"></span>
-              <span className="card-type-label">VITALTRACE PASSPORT</span>
+              <span className="card-type-label">VITALTRACE UHID PASSPORT</span>
             </div>
           </div>
 
@@ -278,7 +330,7 @@ export default function ProfileView({
 
               <div className="card-grid">
                 <div>
-                  <span className="card-label">VitalTrace ID (ABHA)</span>
+                  <span className="card-label">Unique Health ID (UHID)</span>
                   <span className="card-value font-mono">{profile.vitalTraceId}</span>
                 </div>
                 <div>
@@ -309,21 +361,21 @@ export default function ProfileView({
               <div className="simulated-qr">
                 <QrCode size={80} className="qr-image" />
               </div>
-              <span className="qr-subtext">Scan in Emergency</span>
+              <span className="qr-subtext">Emergency QR (Break-Glass)</span>
               <button 
                 type="button" 
                 onClick={onOpenDoctorMode}
                 className="btn-qr-scan"
                 title="Simulate ER Doctor scanning this patient's code"
               >
-                ER Doctor Scan
+                Doctor Scanner
               </button>
             </div>
           </div>
 
           <div className="card-footer">
             <div className="footer-schemes-quick">
-              <span>Cashless Schemes:</span>
+              <span>Cashless Coverage:</span>
               <strong>{profile.govtSchemes?.length || 0} Govt Scheme(s)</strong>
               <span>•</span>
               <strong>{profile.mediclaimPolicies?.length || 0} Mediclaim Policy(s)</strong>
@@ -332,7 +384,7 @@ export default function ProfileView({
               {profile.allergies?.length > 0 ? (
                 <span className="text-rose flex-center gap-1">
                   <AlertTriangle size={14} /> 
-                  <strong>{profile.allergies.length} Drug Allergen(s) Alert</strong>
+                  <strong>{profile.allergies.length} Drug Allergen(s) Documented</strong>
                 </span>
               ) : (
                 <span className="text-emerald">No Known Drug Allergies</span>
@@ -342,24 +394,51 @@ export default function ProfileView({
         </div>
       </div>
 
-      {/* Main Tabs Navigation */}
+      {/* Main Tabs Navigation (Aligned with Section 10 BRD Specifications) */}
       <div className="profile-tabs-header">
         <button
           className={`tab-btn ${activeTab === 'schemes' ? 'tab-btn-active' : ''}`}
           onClick={() => setActiveTab('schemes')}
         >
           <Building size={16} />
-          <span>Central & State Health Schemes</span>
-          <span className="tab-counter">{profile.govtSchemes?.length || 0}</span>
+          <span>Health Schemes & Cashless Insurance</span>
+          <span className="tab-counter">{(profile.govtSchemes?.length || 0) + (profile.mediclaimPolicies?.length || 0)}</span>
         </button>
 
         <button
-          className={`tab-btn ${activeTab === 'mediclaim' ? 'tab-btn-active' : ''}`}
-          onClick={() => setActiveTab('mediclaim')}
+          className={`tab-btn ${activeTab === 'medications' ? 'tab-btn-active' : ''}`}
+          onClick={() => setActiveTab('medications')}
         >
-          <CreditCard size={16} />
-          <span>Private & Corporate Mediclaim</span>
-          <span className="tab-counter">{profile.mediclaimPolicies?.length || 0}</span>
+          <HeartPulse size={16} />
+          <span>Medications & E-Pharmacy</span>
+          <span className="tab-counter">{profile.medications?.length || 0}</span>
+        </button>
+
+        <button
+          className={`tab-btn ${activeTab === 'test_orders' ? 'tab-btn-active' : ''}`}
+          onClick={() => setActiveTab('test_orders')}
+        >
+          <Clock size={16} />
+          <span>Diagnostic Orders & Lab Booking</span>
+          {profile.pendingTestOrders?.length > 0 && <span className="tab-counter badge-amber-dot"></span>}
+        </button>
+
+        <button
+          className={`tab-btn ${activeTab === 'reports' ? 'tab-btn-active' : ''}`}
+          onClick={() => setActiveTab('reports')}
+        >
+          <FileText size={16} />
+          <span>Digital Vault: Reports & Visits</span>
+          <span className="tab-counter">{(profile.diagnosticReports?.length || 0) + (profile.doctorVisits?.length || 0)}</span>
+        </button>
+
+        <button
+          className={`tab-btn ${activeTab === 'consent' ? 'tab-btn-active' : ''}`}
+          onClick={() => setActiveTab('consent')}
+        >
+          <Lock size={16} />
+          <span>Consent & Privacy Manager</span>
+          <span className="badge badge-emerald">DPDP Act</span>
         </button>
 
         {profile.isMinor && (
@@ -369,224 +448,552 @@ export default function ProfileView({
           >
             <Users size={16} />
             <span>Parent / Guardian Legal Info</span>
-            <span className="tab-counter badge-amber-dot"></span>
           </button>
         )}
-
-        <button
-          className={`tab-btn ${activeTab === 'clinical' ? 'tab-btn-active' : ''}`}
-          onClick={() => setActiveTab('clinical')}
-        >
-          <HeartPulse size={16} />
-          <span>Interoperable Medical Ledger & Allergies</span>
-          {profile.allergies?.length > 0 && <span className="tab-counter badge-rose-pill">{profile.allergies.length} Alert</span>}
-        </button>
-
-        <button
-          className={`tab-btn ${activeTab === 'reports' ? 'tab-btn-active' : ''}`}
-          onClick={() => setActiveTab('reports')}
-        >
-          <FileText size={16} />
-          <span>My Diagnostic Reports & Doctor Visits</span>
-          <span className="tab-counter">{(profile.diagnosticReports?.length || 0) + (profile.doctorVisits?.length || 0)}</span>
-        </button>
       </div>
 
-      {/* Tab 1: State & Central Health Schemes (Cashless Processing) */}
+      {/* TAB 1: HEALTH SCHEMES & CASHLESS INSURANCE (Central & State + Private Mediclaim) */}
       {activeTab === 'schemes' && (
         <section className="tab-panel">
           <div className="panel-title-row">
             <div>
-              <h3 className="panel-title">State & Central Health Schemes (Cashless Network)</h3>
+              <h3 className="panel-title">Government Schemes & Private Mediclaim (Cashless Vault)</h3>
               <p className="panel-subtitle">
-                Official Ayushman Bharat (PM-JAY), CGHS, ESIC, and State Government Schemes enabling zero-deposit cashless hospitalization across 30,000+ empanelled hospitals.
+                Official Ayushman Bharat (PM-JAY), CGHS, State Schemes, and Private TPA health insurance policies enabling zero-deposit cashless hospitalization across 30,000+ hospitals.
+              </p>
+            </div>
+            <div className="action-button-group">
+              <button
+                type="button"
+                onClick={() => setShowAddSchemeModal(true)}
+                className="btn btn-outline-cyan btn-sm"
+              >
+                <Plus size={15} /> Add Govt Scheme
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowAddMediclaimModal(true)}
+                className="btn btn-primary btn-sm"
+              >
+                <Plus size={15} /> Add Mediclaim
+              </button>
+            </div>
+          </div>
+
+          <div className="schemes-grid">
+            {profile.govtSchemes?.map((sch) => (
+              <div key={sch.id} className="scheme-card">
+                <div className="scheme-card-header">
+                  <div className="scheme-badge-group">
+                    <span className={`badge ${sch.category === 'Central' ? 'badge-cyan' : 'badge-emerald'}`}>
+                      {sch.category} Scheme ({sch.state || 'India'})
+                    </span>
+                    <span className="badge badge-success">
+                      <CheckCircle size={12} /> {sch.status}
+                    </span>
+                  </div>
+                  <span className="beneficiary-id-pill font-mono">{sch.beneficiaryId}</span>
+                </div>
+
+                <h4 className="scheme-name">{sch.schemeName}</h4>
+
+                <div className="scheme-balance-box">
+                  <div className="balance-row">
+                    <span className="balance-label">Cashless Pre-Auth Balance Available:</span>
+                    <span className="balance-value text-emerald">{formatCurrencyINR(sch.availableBalance)}</span>
+                  </div>
+                  <div className="progress-bar-bg">
+                    <div 
+                      className="progress-bar-fill"
+                      style={{ width: `${Math.min(100, ((sch.availableBalance || 0) / (sch.cashlessCoverageLimit || 500000)) * 100)}%` }}
+                    ></div>
+                  </div>
+                  <div className="balance-sub-row">
+                    <span>Total Annual Cover: {formatCurrencyINR(sch.cashlessCoverageLimit)}</span>
+                    <span>Empaneled Network: {sch.empanelledHospitalsCount?.toLocaleString()}+</span>
+                  </div>
+                </div>
+
+                <div className="scheme-card-actions">
+                  <button
+                    type="button"
+                    onClick={() => handleOpenPreAuth(sch)}
+                    className="btn btn-emerald full-width"
+                  >
+                    <CreditCard size={15} />
+                    <span>Initiate Cashless Hospital Pre-Auth</span>
+                  </button>
+                </div>
+              </div>
+            ))}
+
+            {profile.mediclaimPolicies?.map((med) => (
+              <div key={med.id} className="mediclaim-card">
+                <div className="mediclaim-header">
+                  <div>
+                    <span className="badge badge-purple">{med.policyType}</span>
+                    <h4 className="insurer-name">{med.insuranceCompany}</h4>
+                  </div>
+                  <span className="mediclaim-status-pill">{med.status}</span>
+                </div>
+
+                <div className="mediclaim-stats-row">
+                  <div className="stat-box">
+                    <span className="stat-label">Total Sum Insured</span>
+                    <span className="stat-number">{formatCurrencyINR(med.sumInsured)}</span>
+                  </div>
+                  <div className="stat-box highlight">
+                    <span className="stat-label">Available Cashless Limit</span>
+                    <span className="stat-number text-emerald">{formatCurrencyINR(med.cashlessBalanceAvailable)}</span>
+                  </div>
+                </div>
+
+                <div className="mediclaim-tpa-info">
+                  <div className="tpa-row">
+                    <span className="text-muted">TPA Administrator:</span>
+                    <strong>{med.tpaName}</strong>
+                  </div>
+                  <div className="tpa-row">
+                    <span className="text-muted">Policy Number:</span>
+                    <strong className="font-mono">{med.policyNumber}</strong>
+                  </div>
+                  <div className="tpa-row">
+                    <span className="text-muted">24x7 Cashless Desk Helpline:</span>
+                    <span className="phone-tag font-mono"><Phone size={12} /> {med.cashlessDeskHelpline}</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* TAB 2: ACTIVE MEDICATIONS, SMART REMINDERS & E-PHARMACY (Section 10.3) */}
+      {activeTab === 'medications' && (
+        <section className="tab-panel">
+          <div className="panel-title-row">
+            <div>
+              <h3 className="panel-title">Active Regimens, Pill Reminders & E-Pharmacy Ordering</h3>
+              <p className="panel-subtitle">
+                Track ongoing medications, manage automated pill reminders, and order doorstep medicine delivery via empaneled e-pharmacy partners (Tata 1mg, Apollo, PharmEasy).
               </p>
             </div>
             <button
               type="button"
-              onClick={() => setShowAddSchemeModal(true)}
-              className="btn btn-primary"
+              onClick={() => setShowEPharmacyModal(true)}
+              className="btn btn-emerald"
             >
-              <Plus size={16} /> Add Government Scheme
+              <ShoppingBag size={16} /> One-Click E-Pharmacy Order
             </button>
           </div>
 
-          <div className="schemes-grid">
-            {profile.govtSchemes && profile.govtSchemes.length > 0 ? (
-              profile.govtSchemes.map((sch) => (
-                <div key={sch.id} className="scheme-card">
-                  <div className="scheme-card-header">
-                    <div className="scheme-badge-group">
-                      <span className={`badge ${sch.category === 'Central' ? 'badge-cyan' : 'badge-emerald'}`}>
-                        {sch.category} Scheme ({sch.state || 'India'})
-                      </span>
-                      <span className="badge badge-success">
-                        <CheckCircle size={12} /> {sch.status}
-                      </span>
+          {/* Active Medications List with Reminders */}
+          <div className="meds-reminders-grid">
+            {profile.medications?.map((m) => {
+              const reminder = (profile.medicationReminders || []).find(r => r.medicineName.toLowerCase().includes(m.medicineName.toLowerCase()));
+              return (
+                <div key={m.id} className="medication-regimen-card">
+                  <div className="med-regimen-header">
+                    <div>
+                      <h4 className="med-card-name">{m.medicineName}</h4>
+                      <span className="med-condition-pill">{m.condition}</span>
                     </div>
-                    <span className="beneficiary-id-pill font-mono">{sch.beneficiaryId}</span>
+                    <span className="badge badge-emerald">{m.status}</span>
                   </div>
 
-                  <h4 className="scheme-name">{sch.schemeName}</h4>
-
-                  <div className="scheme-balance-box">
-                    <div className="balance-row">
-                      <span className="balance-label">Cashless Pre-Auth Balance Available:</span>
-                      <span className="balance-value text-emerald">{formatCurrencyINR(sch.availableBalance)}</span>
+                  <div className="med-schedule-box">
+                    <div className="schedule-row">
+                      <span className="text-muted">Dosage & Frequency:</span>
+                      <strong>{m.dosage}</strong>
                     </div>
-                    <div className="progress-bar-bg">
-                      <div 
-                        className="progress-bar-fill"
-                        style={{ width: `${Math.min(100, ((sch.availableBalance || 0) / (sch.cashlessCoverageLimit || 500000)) * 100)}%` }}
-                      ></div>
-                    </div>
-                    <div className="balance-sub-row">
-                      <span>Total Annual Cover: {formatCurrencyINR(sch.cashlessCoverageLimit)}</span>
-                      <span>Empanelled Hospitals: {sch.empanelledHospitalsCount?.toLocaleString()}+</span>
+                    <div className="schedule-row">
+                      <span className="text-muted">Prescribed At:</span>
+                      <span>{m.prescribedHospital} ({m.doctorName})</span>
                     </div>
                   </div>
 
-                  <div className="scheme-details-list">
-                    <div className="detail-item">
-                      <span className="text-muted">Primary Beneficiary:</span>
-                      <strong>{sch.familyHeadName}</strong>
+                  {/* Smart Pill Reminder Card */}
+                  <div className="reminder-status-strip">
+                    <div className="reminder-left">
+                      <Bell size={16} className={reminder?.isActive ? 'text-amber' : 'text-muted'} />
+                      <div>
+                        <strong>Pill Reminder Alarm: {reminder?.time || '08:00 AM'}</strong>
+                        <span className="reminder-sub">Status: {reminder?.isActive ? 'Active Daily Notification' : 'Muted'} • Last taken: {reminder?.lastTaken || 'Not recorded today'}</span>
+                      </div>
                     </div>
-                    <div className="detail-item">
-                      <span className="text-muted">Card Issue Date:</span>
-                      <span>{sch.cardIssuedDate || 'Registered'}</span>
+                    <div className="reminder-actions">
+                      <button
+                        type="button"
+                        onClick={() => reminder && handleToggleReminder(reminder.id)}
+                        className={`btn btn-sm ${reminder?.isActive ? 'btn-secondary' : 'btn-outline-cyan'}`}
+                      >
+                        {reminder?.isActive ? 'Mute' : 'Enable'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => reminder && handleMarkTaken(reminder.id)}
+                        className="btn btn-emerald btn-sm"
+                      >
+                        <Check size={14} /> Mark as Taken
+                      </button>
                     </div>
-                    <div className="detail-item">
-                      <span className="text-muted">Recent Cashless Claim:</span>
-                      <span className="text-truncate">{sch.lastCashlessClaim || 'No prior claims'}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* E-Pharmacy Partners Banner */}
+          <div className="e-pharmacy-banner-card mt-3">
+            <div className="pharmacy-banner-head">
+              <ShoppingBag size={20} className="text-cyan" />
+              <div>
+                <h4>Empaneled E-Pharmacy Delivery Partners</h4>
+                <p className="text-muted text-sm">Direct integration with digital prescriptions for instant cart building and doorstep dispatch:</p>
+              </div>
+            </div>
+
+            <div className="pharmacy-partners-strip">
+              {EMPANELED_PHARMACY_PARTNERS.map(p => (
+                <div key={p.id} className="partner-card">
+                  <strong className="partner-name">{p.name}</strong>
+                  <span className="partner-del">{p.deliveryTime}</span>
+                  <span className="badge badge-emerald">{p.discount}</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedPharmacy(p);
+                      setShowEPharmacyModal(true);
+                    }}
+                    className="btn btn-secondary btn-sm full-width mt-2"
+                  >
+                    Order via {p.name.split(' ')[0]}
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* TAB 3: DIAGNOSTIC ORDERS & LAB SCHEDULING (Section 10.4) */}
+      {activeTab === 'test_orders' && (
+        <section className="tab-panel">
+          <div className="panel-title-row">
+            <div>
+              <h3 className="panel-title">Pending Diagnostic Orders & Lab Scheduling</h3>
+              <p className="panel-subtitle">
+                Review actionable pathology and radiology investigations prescribed by your doctors. Compare transparent prices across local labs and schedule clinic visits or home sample collection.
+              </p>
+            </div>
+          </div>
+
+          <div className="pending-orders-list">
+            {profile.pendingTestOrders && profile.pendingTestOrders.length > 0 ? (
+              profile.pendingTestOrders.map((ord) => (
+                <div key={ord.id} className="pending-order-card">
+                  <div className="order-card-top">
+                    <div>
+                      <span className="badge badge-cyan">{ord.category}</span>
+                      <h4 className="order-name">{ord.testName}</h4>
+                      <span className="loinc-tag font-mono">{ord.code}</span>
+                    </div>
+                    <div className="order-urgency-box">
+                      <span className="urgency-lbl">Timeline:</span>
+                      <strong className="urgency-val text-rose">{ord.urgency}</strong>
                     </div>
                   </div>
 
-                  <div className="scheme-card-actions">
+                  <div className="order-meta-row">
+                    <span>Prescribed by: <strong>{ord.orderedBy}</strong> on {ord.orderDate}</span>
+                    <span>•</span>
+                    <span>Preparation: <em>{ord.preparation}</em></span>
+                    <span>•</span>
+                    <span>Estimated Cost: <strong className="text-emerald">{ord.estimatedCostRange}</strong></span>
+                  </div>
+
+                  <div className="order-action-bar">
+                    <span className="status-indicator-tag">Status: <strong>{ord.status}</strong></span>
                     <button
                       type="button"
-                      onClick={() => handleOpenPreAuth(sch)}
-                      className="btn btn-emerald full-width"
+                      onClick={() => {
+                        const matchingTest = DIAGNOSTIC_TEST_CATALOG.find(t => t.testName.toLowerCase().includes(ord.testName.toLowerCase().slice(0, 10))) || DIAGNOSTIC_TEST_CATALOG[0];
+                        setSelectedTestToBook(ord);
+                        setSelectedLabChoice(matchingTest.hyperlocalPricing[0]);
+                        setShowLabBookingModal(true);
+                      }}
+                      className="btn btn-emerald"
                     >
-                      <CreditCard size={15} />
-                      <span>Initiate Instant Cashless Pre-Auth</span>
+                      <Calendar size={15} /> Schedule Test / Book Home Collection
                     </button>
                   </div>
                 </div>
               ))
             ) : (
-              <div className="empty-state-box">
-                <Building size={36} className="text-muted" />
-                <p>No government health schemes added yet.</p>
-                <button
-                  type="button"
-                  onClick={() => setShowAddSchemeModal(true)}
-                  className="btn btn-secondary"
-                >
-                  Link PM-JAY / State Scheme
-                </button>
+              <div className="empty-state-box full-width">
+                <CheckCircle size={40} className="text-emerald" />
+                <p>No pending diagnostic orders. All prescribed lab tests are completed.</p>
               </div>
             )}
           </div>
         </section>
       )}
 
-      {/* Tab 2: Private & Corporate Mediclaim */}
-      {activeTab === 'mediclaim' && (
+      {/* TAB 4: DIGITAL VAULT: REPORTS & DOCTOR VISITS */}
+      {activeTab === 'reports' && (
         <section className="tab-panel">
           <div className="panel-title-row">
             <div>
-              <h3 className="panel-title">Private & Organizational Mediclaim Policies</h3>
+              <h3 className="panel-title">Digital Health Vault: Diagnostic Reports & Doctor Visits</h3>
               <p className="panel-subtitle">
-                Corporate employer group health insurance, TPA cashless pre-authorization, and personal family floater policies linked to your Aadhaar.
+                Access verified laboratory test results in official PDF and high-res Image formats, doctor visit notes, and inpatient observation logs.
               </p>
             </div>
-            <button
-              type="button"
-              onClick={() => setShowAddMediclaimModal(true)}
-              className="btn btn-primary"
-            >
-              <Plus size={16} /> Add Mediclaim Policy
-            </button>
           </div>
 
-          <div className="mediclaim-grid">
-            {profile.mediclaimPolicies && profile.mediclaimPolicies.length > 0 ? (
-              profile.mediclaimPolicies.map((med) => (
-                <div key={med.id} className="mediclaim-card">
-                  <div className="mediclaim-header">
-                    <div>
-                      <span className="badge badge-purple">{med.policyType}</span>
-                      <h4 className="insurer-name">{med.insuranceCompany}</h4>
-                    </div>
-                    <span className="mediclaim-status-pill">{med.status}</span>
+          {/* Diagnostic Reports Grid */}
+          <div className="clinical-section">
+            <div className="clinical-section-header">
+              <FileText size={18} className="text-cyan" />
+              <h4>📄 Laboratory & Diagnostic Imaging Reports (PDF & Images)</h4>
+            </div>
+
+            <div className="reports-gallery-grid">
+              {profile.diagnosticReports?.map((rep) => (
+                <div key={rep.id} className="report-card">
+                  <div className="report-card-top">
+                    <span className={`format-indicator ${rep.format === 'PDF' ? 'bg-pdf' : 'bg-img'}`}>
+                      {rep.format === 'PDF' ? <FileText size={14} /> : <Image size={14} />}
+                      {rep.format} Document
+                    </span>
+                    <span className="report-date-tag">{rep.date}</span>
                   </div>
 
-                  {med.policyType.includes('Corporate') && (
-                    <div className="corporate-employer-banner">
-                      <Building size={14} className="text-cyan" />
-                      <span>Employer: <strong>{med.employerName}</strong> • Emp ID: {med.employeeId}</span>
-                    </div>
-                  )}
+                  <h4 className="report-title">{rep.title}</h4>
+                  <span className="report-dept-badge">{rep.category}</span>
 
-                  <div className="mediclaim-stats-row">
-                    <div className="stat-box">
-                      <span className="stat-label">Total Sum Insured</span>
-                      <span className="stat-number">{formatCurrencyINR(med.sumInsured)}</span>
-                    </div>
-                    <div className="stat-box highlight">
-                      <span className="stat-label">Available Cashless Limit</span>
-                      <span className="stat-number text-emerald">{formatCurrencyINR(med.cashlessBalanceAvailable)}</span>
-                    </div>
+                  <div className="report-lab-info">
+                    <p className="lab-name">
+                      <Building size={13} className="text-cyan" /> {rep.labName}
+                    </p>
+                    <p className="lab-addr">{rep.labAddress}</p>
+                    <p className="ordering-doc">Ordered by: <strong>{rep.orderingDoctor}</strong></p>
                   </div>
 
-                  <div className="mediclaim-tpa-info">
-                    <div className="tpa-row">
-                      <span className="text-muted">Third Party Administrator (TPA):</span>
-                      <strong>{med.tpaName}</strong>
-                    </div>
-                    <div className="tpa-row">
-                      <span className="text-muted">Policy Number:</span>
-                      <strong className="font-mono">{med.policyNumber}</strong>
-                    </div>
-                    <div className="tpa-row">
-                      <span className="text-muted">TPA Member ID:</span>
-                      <strong className="font-mono">{med.tpaMemberId}</strong>
-                    </div>
-                    <div className="tpa-row">
-                      <span className="text-muted">Valid Till:</span>
-                      <span>{med.validTill}</span>
-                    </div>
-                    <div className="tpa-row">
-                      <span className="text-muted">Cashless Desk 24x7 Helpline:</span>
-                      <span className="phone-tag font-mono"><Phone size={12} /> {med.cashlessDeskHelpline}</span>
-                    </div>
+                  <div className="report-findings-preview">
+                    <span className="findings-label">Findings Summary:</span>
+                    <p className="findings-snippet">{rep.findings}</p>
                   </div>
 
-                  <div className="mediclaim-features">
-                    <span className="feature-pill">Co-Pay: {med.coPay || '0%'}</span>
-                    <span className="feature-pill">Room Rent: {med.roomRentCap || 'No Capping'}</span>
-                    <span className="feature-pill">Hospital Network: 14,000+ Cashless</span>
+                  <div className="report-card-footer">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedReportForPatientView(rep)}
+                      className="btn btn-primary full-width"
+                    >
+                      {rep.format === 'PDF' ? <FileText size={15} /> : <Image size={15} />}
+                      <span>Open {rep.format} Report Viewer</span>
+                    </button>
                   </div>
                 </div>
-              ))
-            ) : (
-              <div className="empty-state-box">
-                <CreditCard size={36} className="text-muted" />
-                <p>No corporate or private mediclaim policies registered.</p>
-                <button
-                  type="button"
-                  onClick={() => setShowAddMediclaimModal(true)}
-                  className="btn btn-secondary"
-                >
-                  Add Mediclaim Policy
-                </button>
-              </div>
-            )}
+              ))}
+            </div>
+          </div>
+
+          {/* Past Doctor Consultations */}
+          <div className="clinical-section">
+            <div className="clinical-section-header">
+              <Stethoscope size={18} className="text-emerald" />
+              <h4>👨‍⚕️ Past Doctor Consultations & Prescriptions</h4>
+            </div>
+
+            <div className="doctor-visits-timeline">
+              {profile.doctorVisits?.map((vis) => (
+                <div key={vis.id} className="visit-card">
+                  <div className="visit-header">
+                    <div className="doctor-badge-group">
+                      <div className="doc-avatar-sm">
+                        <Stethoscope size={18} className="text-white" />
+                      </div>
+                      <div>
+                        <h4 className="treating-doctor-name">{vis.doctorName}</h4>
+                        <p className="treating-doctor-creds">
+                          {vis.doctorQualification} • <span className="font-mono text-cyan">Reg: {vis.doctorRegNo}</span>
+                        </p>
+                        <span className="badge badge-purple">{vis.specialty}</span>
+                      </div>
+                    </div>
+                    <div className="visit-meta-tag">
+                      <span className="visit-date-badge"><Calendar size={13} /> {vis.visitDate}</span>
+                    </div>
+                  </div>
+
+                  <div className="hospital-facility-banner">
+                    <Building size={15} className="text-cyan flex-shrink-0" />
+                    <div>
+                      <strong>{vis.hospitalName}</strong>
+                      <p className="facility-address">{vis.hospitalAddress}</p>
+                    </div>
+                  </div>
+
+                  <div className="clinical-findings-box">
+                    <div className="findings-row">
+                      <span className="findings-heading">Presenting Complaints:</span>
+                      <p>{vis.chiefComplaints}</p>
+                    </div>
+                    <div className="findings-row highlight-diag">
+                      <span className="findings-heading">Diagnosis:</span>
+                      <strong className="text-rose font-large">{vis.diagnosis}</strong>
+                    </div>
+                  </div>
+
+                  {vis.prescriptions && vis.prescriptions.length > 0 && (
+                    <div className="visit-prescriptions-section">
+                      <h5 className="rx-heading">Prescriptions</h5>
+                      <div className="rx-table-wrap">
+                        <table className="rx-table">
+                          <thead>
+                            <tr>
+                              <th>Medicine</th>
+                              <th>Dosage</th>
+                              <th>Duration</th>
+                              <th>Instructions</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {vis.prescriptions.map((rx, idx) => (
+                              <tr key={idx}>
+                                <td><strong>{rx.drug}</strong></td>
+                                <td>{rx.dosage}</td>
+                                <td>{rx.duration}</td>
+                                <td>{rx.instructions}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
         </section>
       )}
 
-      {/* Tab 3: Minor & Guardian Details */}
+      {/* TAB 5: CONSENT & PRIVACY MANAGER (Section 10.5, DPDP Act 2023) */}
+      {activeTab === 'consent' && (
+        <section className="tab-panel">
+          <div className="panel-title-row">
+            <div>
+              <h3 className="panel-title">Patient-Centric Consent & Privacy Management</h3>
+              <p className="panel-subtitle">
+                Account Aggregator architecture empowering you with granular control over who views your medical data, for how long, and for what purpose under the Digital Personal Data Protection (DPDP) Act 2023.
+              </p>
+            </div>
+            <span className="badge badge-emerald">DPDP Act Compliant</span>
+          </div>
+
+          {/* Active Consent Requests & Approvals */}
+          <div className="clinical-section">
+            <div className="clinical-section-header">
+              <Lock size={18} className="text-cyan" />
+              <h4>🔐 Data Sharing Permissions & Active Doctor Authorizations</h4>
+            </div>
+
+            <div className="consent-logs-list">
+              {profile.consentLogs?.map((con) => (
+                <div key={con.id} className="consent-log-card">
+                  <div className="consent-card-top">
+                    <div>
+                      <h5 className="consent-doc-name">{con.doctorName} ({con.doctorReg})</h5>
+                      <p className="consent-hosp-name">{con.hospital}</p>
+                    </div>
+                    <span className={`badge ${con.status === 'Approved' ? 'badge-emerald' : 'badge-neutral'}`}>
+                      {con.status}
+                    </span>
+                  </div>
+
+                  <div className="consent-meta-grid">
+                    <div>
+                      <span className="text-muted text-xs">Purpose:</span>
+                      <p className="text-sm font-semibold">{con.purpose}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted text-xs">Scope:</span>
+                      <p className="text-sm">{con.scope}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted text-xs">Validity:</span>
+                      <p className="text-sm font-mono text-cyan">{con.validUntil}</p>
+                    </div>
+                  </div>
+
+                  <div className="consent-action-row">
+                    {con.status === 'Approved' ? (
+                      <button
+                        type="button"
+                        onClick={() => handleRevokeConsent(con.id)}
+                        className="btn btn-danger-outline btn-sm"
+                      >
+                        Revoke Access Immediately
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => handleApproveConsent(con.id)}
+                        className="btn btn-emerald btn-sm"
+                      >
+                        Grant Access (7 Days)
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Break-Glass Emergency Audit Log (FR-05) */}
+          <div className="clinical-section">
+            <div className="clinical-section-header danger-header">
+              <ShieldAlert size={18} className="text-rose" />
+              <h4>🚨 Emergency "Break-Glass" Access Audit Trail (7-Year Statutory Log)</h4>
+            </div>
+            <p className="section-note mb-2">
+              Whenever an emergency department accesses your record without prior OTP consent, a mandatory legal audit record is created and preserved for 7 years per the DPDP Act.
+            </p>
+
+            <div className="breakglass-audit-list">
+              {profile.breakGlassLogs && profile.breakGlassLogs.length > 0 ? (
+                profile.breakGlassLogs.map((bg) => (
+                  <div key={bg.id} className="breakglass-log-card">
+                    <div className="bg-log-top">
+                      <strong className="text-rose">{bg.hospital}</strong>
+                      <span className="font-mono text-xs">{bg.timestamp}</span>
+                    </div>
+                    <p className="bg-justification">
+                      <strong>Mandatory Clinical Justification:</strong> "{bg.clinicalJustification}"
+                    </p>
+                    <div className="bg-meta-tags">
+                      <span>Attending Doctor: <strong>{bg.doctorName}</strong></span>
+                      <span>•</span>
+                      <span>SMS Dispatched: <strong className="text-emerald">{bg.emergencyContactNotified}</strong></span>
+                      <span>•</span>
+                      <span>Retention: {bg.auditRetentionPeriod}</span>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="empty-state-box full-width">
+                  <p>No emergency break-glass overrides recorded on your file.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* TAB 6: MINOR GUARDIAN INFO (If Minor) */}
       {profile.isMinor && activeTab === 'guardian' && (
         <section className="tab-panel">
           <div className="panel-title-row">
@@ -634,22 +1041,6 @@ export default function ProfileView({
                 </span>
                 <span className="status-sub">Direct Call & SMS Alerts</span>
               </div>
-
-              <div className="guardian-info-card">
-                <span className="info-card-label">Guardian Email</span>
-                <span className="info-card-val">
-                  {profile.guardianDetails?.guardianEmail || 'Not Provided'}
-                </span>
-                <span className="status-sub">Digital Records Synced</span>
-              </div>
-
-              <div className="guardian-info-card">
-                <span className="info-card-label">Guardian VitalTrace ID</span>
-                <span className="info-card-val font-mono">
-                  {profile.guardianDetails?.guardianVitalTraceId || 'VT-LINKED'}
-                </span>
-                <span className="status-sub">Family Health Mesh</span>
-              </div>
             </div>
 
             <div className="guardian-consent-box">
@@ -660,375 +1051,238 @@ export default function ProfileView({
               <p className="consent-description">
                 "{profile.guardianDetails?.consentScope}"
               </p>
-              <div className="consent-metadata">
-                <span>Consent Date: <strong>{profile.guardianDetails?.consentDate}</strong></span>
-                <span>•</span>
-                <span>Consent Status: <strong className="text-emerald">Active & Legally Binding under IT Act 2000</strong></span>
-              </div>
             </div>
           </div>
         </section>
       )}
 
-      {/* Tab 4: Interoperable Clinical Ledger & Allergies */}
-      {activeTab === 'clinical' && (
-        <section className="tab-panel">
-          <div className="panel-title-row">
-            <div>
-              <h3 className="panel-title">Consolidated Interoperable Medical Ledger</h3>
-              <p className="panel-subtitle">
-                Cross-hospital synchronized health records, high-alert drug allergies, and active medication regimens preventing fatal medical errors.
-              </p>
-            </div>
-            <div className="action-button-group">
-              <button
-                type="button"
-                onClick={() => setShowAddAllergyModal(true)}
-                className="btn btn-danger-outline"
-              >
-                <AlertTriangle size={15} /> Add Drug Allergy
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowAddMedModal(true)}
-                className="btn btn-primary"
-              >
-                <Plus size={15} /> Add Prescribed Medication
-              </button>
-            </div>
-          </div>
-
-          {/* High-Alert Allergies Banner */}
-          <div className="clinical-section">
-            <div className="clinical-section-header danger-header">
-              <AlertTriangle size={18} className="text-rose" />
-              <h4>🚨 High-Alert Drug Allergies & Contraindications</h4>
+      {/* MODAL: E-PHARMACY ORDER PLACEMENT (Section 10.3) */}
+      {showEPharmacyModal && (
+        <div className="modal-overlay">
+          <div className="modal-card small-modal">
+            <div className="modal-header">
+              <div className="modal-header-icon">
+                <ShoppingBag size={24} className="text-emerald" />
+              </div>
+              <div>
+                <h3 className="modal-title">Order Prescribed Medicines Online</h3>
+                <p className="modal-subtitle">Direct Dispatch from Empaneled E-Pharmacy Partners</p>
+              </div>
+              <button type="button" onClick={() => setShowEPharmacyModal(false)} className="modal-close-btn">×</button>
             </div>
 
-            <div className="allergies-cards-grid">
-              {profile.allergies && profile.allergies.length > 0 ? (
-                profile.allergies.map((all) => (
-                  <div key={all.id} className="allergy-card">
-                    <div className="allergy-card-top">
-                      <span className="allergy-substance">{all.substance}</span>
-                      <span className="badge badge-rose">{all.severity}</span>
-                    </div>
-                    <p className="allergy-reaction">
-                      <strong>Reaction:</strong> {all.reaction}
-                    </p>
-                    <div className="allergy-footer">
-                      <span>Diagnosed by: {all.diagnosedBy}</span>
-                      <span>Recorded: {all.dateRecorded}</span>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="no-allergies-box">
-                  <CheckCircle size={20} className="text-emerald" />
-                  <span>No documented drug allergies recorded in the national ledger.</span>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Active Medication Regimens */}
-          <div className="clinical-section">
-            <div className="clinical-section-header">
-              <Stethoscope size={18} className="text-cyan" />
-              <h4>💊 Ongoing Prescriptions & Medication Regimens (Cross-Hospital)</h4>
-            </div>
-
-            <div className="medications-table-wrap">
-              {profile.medications && profile.medications.length > 0 ? (
-                <table className="vt-table">
-                  <thead>
-                    <tr>
-                      <th>Medicine Name</th>
-                      <th>Dosage & Frequency</th>
-                      <th>Indication / Condition</th>
-                      <th>Prescribing Hospital</th>
-                      <th>Doctor</th>
-                      <th>Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {profile.medications.map((m) => (
-                      <tr key={m.id}>
-                        <td><strong>{m.medicineName}</strong></td>
-                        <td>{m.dosage}</td>
-                        <td>{m.condition}</td>
-                        <td>{m.prescribedHospital}</td>
-                        <td>{m.doctorName}</td>
-                        <td>
-                          <span className="badge badge-emerald">{m.status}</span>
-                        </td>
-                      </tr>
+            {!orderPlacedData ? (
+              <form onSubmit={handlePlacePharmacyOrder} className="modal-form">
+                <div className="form-group">
+                  <label className="field-label">Select Delivery Partner</label>
+                  <select
+                    value={selectedPharmacy.id}
+                    onChange={(e) => {
+                      const p = EMPANELED_PHARMACY_PARTNERS.find(item => item.id === e.target.value);
+                      if (p) setSelectedPharmacy(p);
+                    }}
+                    className="form-select"
+                  >
+                    {EMPANELED_PHARMACY_PARTNERS.map(p => (
+                      <option key={p.id} value={p.id}>
+                        {p.name} ({p.deliveryTime} • {p.discount})
+                      </option>
                     ))}
-                  </tbody>
-                </table>
-              ) : (
-                <div className="empty-state-box">
-                  <p>No active medications recorded.</p>
+                  </select>
                 </div>
-              )}
-            </div>
-          </div>
 
-          {/* Cross-Hospital Admission History */}
-          <div className="clinical-section">
-            <div className="clinical-section-header">
-              <Building size={18} className="text-emerald" />
-              <h4>🏥 Past Hospital Admissions & Cashless Claim Records</h4>
-            </div>
+                <div className="form-group">
+                  <label className="field-label">Delivery Address *</label>
+                  <input
+                    type="text"
+                    value={orderDeliveryAddress}
+                    onChange={(e) => setOrderDeliveryAddress(e.target.value)}
+                    className="form-input"
+                    required
+                  />
+                </div>
 
-            <div className="history-timeline">
-              {profile.hospitalHistory && profile.hospitalHistory.length > 0 ? (
-                profile.hospitalHistory.map((h) => (
-                  <div key={h.id} className="timeline-item">
-                    <div className="timeline-marker"></div>
-                    <div className="timeline-card">
-                      <div className="timeline-card-header">
-                        <h5>{h.hospitalName}</h5>
-                        <span className="timeline-date">{h.admissionDate} → {h.dischargeDate}</span>
-                      </div>
-                      <p className="timeline-diag"><strong>Diagnosis:</strong> {h.diagnosis}</p>
-                      <div className="timeline-meta">
-                        <span>Attending: {h.treatingDoctor}</span>
-                        <span>•</span>
-                        <span className="cashless-tag">{h.cashlessProcessedUnder}</span>
-                      </div>
-                    </div>
+                <div className="order-items-preview-box">
+                  <span className="preview-lbl">Medicines to be Dispatched:</span>
+                  <ul className="preview-meds-list">
+                    {profile.medications?.map((m, i) => (
+                      <li key={i}><strong>{m.medicineName}</strong> — {m.dosage}</li>
+                    ))}
+                  </ul>
+                  <div className="order-discount-notice text-emerald">
+                    ✓ E-Prescription verified from national ledger • {selectedPharmacy.discount} applied
                   </div>
-                ))
-              ) : (
-                <div className="empty-state-box">
-                  <p>No past hospital admissions recorded in the network.</p>
                 </div>
-              )}
-            </div>
-          </div>
-        </section>
-      )}
 
-      {/* Tab 5: Diagnostic Reports & Past Consultations (Patient View) */}
-      {activeTab === 'reports' && (
-        <section className="tab-panel">
-          <div className="panel-title-row">
-            <div>
-              <h3 className="panel-title">My Diagnostic Reports & Doctor Consultations</h3>
-              <p className="panel-subtitle">
-                Access all laboratory tests, imaging reports in PDF and Image formats, treating doctor details, prescriptions, and daily observation notes.
-              </p>
-            </div>
-          </div>
+                <div className="modal-actions">
+                  <button type="button" onClick={() => setShowEPharmacyModal(false)} className="btn btn-ghost">Cancel</button>
+                  <button type="submit" className="btn btn-emerald btn-large">
+                    <ShoppingBag size={16} /> Place Doorstep Delivery Order
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <div className="preauth-success-box">
+                <div className="success-icon-wrap">
+                  <CheckCircle size={48} className="text-emerald" />
+                </div>
+                <h3 className="success-title">Medicine Order Placed Successfully!</h3>
+                <p className="success-subtitle">
+                  Dispatched via {orderPlacedData.partner}. Expected delivery in {orderPlacedData.deliveryTime}.
+                </p>
 
-          {/* Diagnostic Reports Gallery */}
-          <div className="clinical-section">
-            <div className="clinical-section-header">
-              <FileText size={18} className="text-cyan" />
-              <h4>📄 Laboratory & Diagnostic Imaging Reports (PDF & Images)</h4>
-            </div>
-
-            <div className="reports-gallery-grid">
-              {profile.diagnosticReports && profile.diagnosticReports.length > 0 ? (
-                profile.diagnosticReports.map((rep) => (
-                  <div key={rep.id} className="report-card">
-                    <div className="report-card-top">
-                      <span className={`format-indicator ${rep.format === 'PDF' ? 'bg-pdf' : 'bg-img'}`}>
-                        {rep.format === 'PDF' ? <FileText size={14} /> : <Image size={14} />}
-                        {rep.format} Document
-                      </span>
-                      <span className="report-date-tag">{rep.date}</span>
-                    </div>
-
-                    <h4 className="report-title">{rep.title}</h4>
-                    <span className="report-dept-badge">{rep.category}</span>
-
-                    <div className="report-lab-info">
-                      <p className="lab-name">
-                        <Building size={13} className="text-cyan" /> {rep.labName}
-                      </p>
-                      <p className="lab-addr">{rep.labAddress}</p>
-                      <p className="ordering-doc">Ordered by: <strong>{rep.orderingDoctor}</strong></p>
-                    </div>
-
-                    <div className="report-findings-preview">
-                      <span className="findings-label">Findings Summary:</span>
-                      <p className="findings-snippet">{rep.findings}</p>
-                    </div>
-
-                    <div className="report-card-footer">
-                      <button
-                        type="button"
-                        onClick={() => setSelectedReportForPatientView(rep)}
-                        className="btn btn-primary full-width"
-                      >
-                        {rep.format === 'PDF' ? <FileText size={15} /> : <Image size={15} />}
-                        <span>Open {rep.format} Report Viewer</span>
-                      </button>
-                    </div>
+                <div className="approval-slip">
+                  <div className="slip-row">
+                    <span>Order Reference ID:</span>
+                    <strong className="font-mono text-emerald">{orderPlacedData.orderRef}</strong>
                   </div>
-                ))
-              ) : (
-                <div className="empty-state-box full-width">
-                  <p>No diagnostic reports on record.</p>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Past Doctor Consultations */}
-          <div className="clinical-section">
-            <div className="clinical-section-header">
-              <Stethoscope size={18} className="text-emerald" />
-              <h4>👨‍⚕️ Past Doctor Consultations & Prescriptions</h4>
-            </div>
-
-            <div className="doctor-visits-timeline">
-              {profile.doctorVisits && profile.doctorVisits.length > 0 ? (
-                profile.doctorVisits.map((vis) => (
-                  <div key={vis.id} className="visit-card">
-                    <div className="visit-header">
-                      <div className="doctor-badge-group">
-                        <div className="doc-avatar-sm">
-                          <Stethoscope size={18} className="text-white" />
-                        </div>
-                        <div>
-                          <h4 className="treating-doctor-name">{vis.doctorName}</h4>
-                          <p className="treating-doctor-creds">
-                            {vis.doctorQualification} • <span className="font-mono text-cyan">Reg: {vis.doctorRegNo}</span>
-                          </p>
-                          <span className="badge badge-purple">{vis.specialty}</span>
-                        </div>
-                      </div>
-                      <div className="visit-meta-tag">
-                        <span className="visit-date-badge"><Calendar size={13} /> {vis.visitDate}</span>
-                      </div>
-                    </div>
-
-                    <div className="hospital-facility-banner">
-                      <Building size={15} className="text-cyan flex-shrink-0" />
-                      <div>
-                        <strong>{vis.hospitalName}</strong>
-                        <p className="facility-address">{vis.hospitalAddress}</p>
-                      </div>
-                    </div>
-
-                    <div className="clinical-findings-box">
-                      <div className="findings-row">
-                        <span className="findings-heading">Presenting Complaints:</span>
-                        <p>{vis.chiefComplaints}</p>
-                      </div>
-                      <div className="findings-row highlight-diag">
-                        <span className="findings-heading">Diagnosis:</span>
-                        <strong className="text-rose font-large">{vis.diagnosis}</strong>
-                      </div>
-                      <div className="findings-row">
-                        <span className="findings-heading">Treatment Details:</span>
-                        <p>{vis.treatmentDetails}</p>
-                      </div>
-                    </div>
-
-                    {vis.prescriptions && vis.prescriptions.length > 0 && (
-                      <div className="visit-prescriptions-section">
-                        <h5 className="rx-heading">Prescriptions</h5>
-                        <div className="rx-table-wrap">
-                          <table className="rx-table">
-                            <thead>
-                              <tr>
-                                <th>Medicine</th>
-                                <th>Dosage</th>
-                                <th>Duration</th>
-                                <th>Instructions</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {vis.prescriptions.map((rx, idx) => (
-                                <tr key={idx}>
-                                  <td><strong>{rx.drug}</strong></td>
-                                  <td>{rx.dosage}</td>
-                                  <td>{rx.duration}</td>
-                                  <td>{rx.instructions}</td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-                    )}
+                  <div className="slip-row">
+                    <span>Delivery Address:</span>
+                    <span className="text-truncate">{orderPlacedData.address}</span>
                   </div>
-                ))
-              ) : (
-                <div className="empty-state-box full-width">
-                  <p>No past doctor consultations recorded.</p>
+                  <div className="slip-row">
+                    <span>Total Amount Payable:</span>
+                    <strong className="text-emerald">{orderPlacedData.estimatedTotal}</strong>
+                  </div>
                 </div>
-              )}
-            </div>
-          </div>
 
-          {/* Inpatient Observation Records */}
-          {profile.hospitalizations && profile.hospitalizations.length > 0 && (
-            <div className="clinical-section">
-              <div className="clinical-section-header">
-                <Bed size={18} className="text-rose" />
-                <h4>🏥 Inpatient Observation Logs & Daily Doctor Rounds</h4>
+                <div className="modal-actions">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowEPharmacyModal(false);
+                      setOrderPlacedData(null);
+                    }}
+                    className="btn btn-primary full-width"
+                  >
+                    Done & Return
+                  </button>
+                </div>
               </div>
-
-              {profile.hospitalizations.map((hosp) => (
-                <div key={hosp.id} className="active-inpatient-container mb-3">
-                  <div className="admission-status-banner">
-                    <div className="status-banner-head">
-                      <div className="ward-icon-wrap">
-                        <Bed size={22} className="text-rose" />
-                      </div>
-                      <div>
-                        <h4 className="ward-title">{hosp.wardBed}</h4>
-                        <p className="hospital-tag-line">
-                          {hosp.admittingHospital} — {hosp.hospitalAddress}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="admission-meta-grid">
-                      <div className="adm-meta-cell">
-                        <span className="cell-lbl">Admission:</span>
-                        <strong>{hosp.admissionDate}</strong>
-                      </div>
-                      <div className="adm-meta-cell">
-                        <span className="cell-lbl">Attending:</span>
-                        <strong>{hosp.attendingDoctor}</strong>
-                      </div>
-                      <div className="adm-meta-cell">
-                        <span className="cell-lbl">Diagnosis:</span>
-                        <strong className="text-rose">{hosp.admissionDiagnosis}</strong>
-                      </div>
-                    </div>
-                  </div>
-
-                  {hosp.dailyObservationLogs && hosp.dailyObservationLogs.length > 0 && (
-                    <div className="daily-rounds-list mt-2">
-                      {hosp.dailyObservationLogs.map((log) => (
-                        <div key={log.logId} className="round-card">
-                          <div className="round-card-top">
-                            <span className="day-badge">Day {log.dayNumber}</span>
-                            <strong className="round-time">{log.roundTime}</strong>
-                            <span className="badge badge-emerald">Status: {log.clinicalStatus}</span>
-                          </div>
-                          <p className="text-muted text-sm mt-1">Doctor: {log.attendingDoctor}</p>
-                          <div className="round-notes-box mt-2">
-                            <p className="note-body">{log.progressNotes}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
+            )}
+          </div>
+        </div>
       )}
 
-      {/* MODAL 1: Add Government Health Scheme */}
+      {/* MODAL: LAB BOOKING & HOME COLLECTION (Section 10.4) */}
+      {showLabBookingModal && selectedTestToBook && (
+        <div className="modal-overlay">
+          <div className="modal-card small-modal">
+            <div className="modal-header">
+              <div className="modal-header-icon">
+                <Calendar size={24} className="text-cyan" />
+              </div>
+              <div>
+                <h3 className="modal-title">Schedule Diagnostic Lab Investigation</h3>
+                <p className="modal-subtitle">{selectedTestToBook.testName}</p>
+              </div>
+              <button type="button" onClick={() => setShowLabBookingModal(false)} className="modal-close-btn">×</button>
+            </div>
+
+            {!bookingConfirmedData ? (
+              <form onSubmit={handleConfirmLabBooking} className="modal-form">
+                <div className="form-group">
+                  <label className="field-label">Select Empaneled Lab (Price Comparison)</label>
+                  <select
+                    onChange={(e) => {
+                      const lab = DIAGNOSTIC_TEST_CATALOG[0].hyperlocalPricing.find(l => l.labName === e.target.value);
+                      if (lab) setSelectedLabChoice(lab);
+                    }}
+                    className="form-select"
+                  >
+                    <option value="Dr. Lal PathLabs">Dr. Lal PathLabs (₹450 • 6 hr turnaround)</option>
+                    <option value="SRL Diagnostics (Agilus)">SRL Diagnostics (₹420 • 8 hr turnaround)</option>
+                    <option value="Metropolis Healthcare">Metropolis Healthcare (₹460 • 6 hr turnaround)</option>
+                    <option value="Jan Aushadhi / Govt PHC">Jan Aushadhi / Govt PHC (₹80 • Subsidized)</option>
+                  </select>
+                </div>
+
+                <div className="form-row">
+                  <div className="form-group flex-1">
+                    <label className="field-label">Sample Collection Mode</label>
+                    <select
+                      value={bookingMode}
+                      onChange={(e) => setBookingMode(e.target.value)}
+                      className="form-select"
+                    >
+                      <option value="Home Collection">Home Sample Collection (Phlebotomist Visit)</option>
+                      <option value="Lab Center Visit">Direct Lab Center Walk-in</option>
+                    </select>
+                  </div>
+
+                  <div className="form-group flex-1">
+                    <label className="field-label">Preferred Time Slot</label>
+                    <input
+                      type="text"
+                      value={bookingDate}
+                      onChange={(e) => setBookingDate(e.target.value)}
+                      className="form-input"
+                    />
+                  </div>
+                </div>
+
+                <div className="modal-actions">
+                  <button type="button" onClick={() => setShowLabBookingModal(false)} className="btn btn-ghost">Cancel</button>
+                  <button type="submit" className="btn btn-primary btn-large">
+                    <CheckCircle size={16} /> Confirm Appointment Booking
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <div className="preauth-success-box">
+                <div className="success-icon-wrap">
+                  <CheckCircle size={48} className="text-emerald" />
+                </div>
+                <h3 className="success-title">Appointment Confirmed!</h3>
+                <p className="success-subtitle">Phlebotomist scheduled for {bookingConfirmedData.mode}.</p>
+
+                <div className="approval-slip">
+                  <div className="slip-row">
+                    <span>Booking Token:</span>
+                    <strong className="font-mono text-emerald">{bookingConfirmedData.bookingRef}</strong>
+                  </div>
+                  <div className="slip-row">
+                    <span>Laboratory:</span>
+                    <strong>{bookingConfirmedData.lab}</strong>
+                  </div>
+                  <div className="slip-row">
+                    <span>Test:</span>
+                    <strong>{bookingConfirmedData.testName}</strong>
+                  </div>
+                  <div className="slip-row">
+                    <span>Estimated Fee:</span>
+                    <strong className="text-emerald">₹{bookingConfirmedData.price}</strong>
+                  </div>
+                </div>
+
+                <div className="modal-actions">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowLabBookingModal(false);
+                      setBookingConfirmedData(null);
+                    }}
+                    className="btn btn-primary full-width"
+                  >
+                    Done & Return
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* REPORT VIEWER MODAL */}
+      {selectedReportForPatientView && (
+        <ReportViewerModal
+          report={selectedReportForPatientView}
+          patient={profile}
+          onClose={() => setSelectedReportForPatientView(null)}
+        />
+      )}
+
+      {/* MODAL: ADD GOVERNMENT SCHEME */}
       {showAddSchemeModal && (
         <div className="modal-overlay">
           <div className="modal-card small-modal">
@@ -1073,50 +1327,16 @@ export default function ProfileView({
                 />
               </div>
 
-              <div className="form-row">
-                <div className="form-group flex-1">
-                  <label className="field-label">Scheme Category</label>
-                  <select
-                    value={newScheme.category}
-                    onChange={(e) => setNewScheme({ ...newScheme, category: e.target.value })}
-                    className="form-select"
-                  >
-                    <option value="Central">Central Govt Scheme</option>
-                    <option value="State">State Govt Scheme</option>
-                  </select>
-                </div>
-
-                <div className="form-group flex-1">
-                  <label className="field-label">Cashless Cover Limit (₹)</label>
-                  <input
-                    type="number"
-                    value={newScheme.cashlessCoverageLimit}
-                    onChange={(e) => setNewScheme({ ...newScheme, cashlessCoverageLimit: e.target.value })}
-                    className="form-input"
-                  />
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label className="field-label">Primary Beneficiary / Family Head</label>
-                <input
-                  type="text"
-                  value={newScheme.familyHeadName}
-                  onChange={(e) => setNewScheme({ ...newScheme, familyHeadName: e.target.value })}
-                  className="form-input"
-                />
-              </div>
-
               <div className="modal-actions">
                 <button type="button" onClick={() => setShowAddSchemeModal(false)} className="btn btn-ghost">Cancel</button>
-                <button type="submit" className="btn btn-primary">Save Health Scheme</button>
+                <button type="submit" className="btn btn-primary">Save Scheme</button>
               </div>
             </form>
           </div>
         </div>
       )}
 
-      {/* MODAL 2: Add Mediclaim Policy */}
+      {/* MODAL: ADD MEDICLAIM */}
       {showAddMediclaimModal && (
         <div className="modal-overlay">
           <div className="modal-card small-modal">
@@ -1138,31 +1358,6 @@ export default function ProfileView({
                 </select>
               </div>
 
-              {newMediclaim.policyType.includes('Corporate') && (
-                <div className="form-row">
-                  <div className="form-group flex-1">
-                    <label className="field-label">Employer / Corporate Name *</label>
-                    <input
-                      type="text"
-                      value={newMediclaim.employerName}
-                      onChange={(e) => setNewMediclaim({ ...newMediclaim, employerName: e.target.value })}
-                      placeholder="e.g. Infosys, TCS, Wipro"
-                      className="form-input"
-                    />
-                  </div>
-                  <div className="form-group flex-1">
-                    <label className="field-label">Employee ID</label>
-                    <input
-                      type="text"
-                      value={newMediclaim.employeeId}
-                      onChange={(e) => setNewMediclaim({ ...newMediclaim, employeeId: e.target.value })}
-                      placeholder="e.g. EMP-10492"
-                      className="form-input"
-                    />
-                  </div>
-                </div>
-              )}
-
               <div className="form-group">
                 <label className="field-label">Insurance Company</label>
                 <select
@@ -1177,214 +1372,26 @@ export default function ProfileView({
               </div>
 
               <div className="form-group">
-                <label className="field-label">Third Party Administrator (TPA)</label>
-                <select
-                  value={newMediclaim.tpaName}
-                  onChange={(e) => setNewMediclaim({ ...newMediclaim, tpaName: e.target.value })}
-                  className="form-select"
-                >
-                  {COMMON_TPAS.map(tpa => (
-                    <option key={tpa} value={tpa}>{tpa}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="form-row">
-                <div className="form-group flex-1">
-                  <label className="field-label">Policy Number *</label>
-                  <input
-                    type="text"
-                    value={newMediclaim.policyNumber}
-                    onChange={(e) => setNewMediclaim({ ...newMediclaim, policyNumber: e.target.value })}
-                    placeholder="e.g. STAR-POL-2026-904"
-                    className="form-input"
-                    required
-                  />
-                </div>
-                <div className="form-group flex-1">
-                  <label className="field-label">TPA Member ID</label>
-                  <input
-                    type="text"
-                    value={newMediclaim.tpaMemberId}
-                    onChange={(e) => setNewMediclaim({ ...newMediclaim, tpaMemberId: e.target.value })}
-                    placeholder="e.g. MEDI-884920"
-                    className="form-input"
-                  />
-                </div>
-              </div>
-
-              <div className="form-row">
-                <div className="form-group flex-1">
-                  <label className="field-label">Sum Insured (₹)</label>
-                  <input
-                    type="number"
-                    value={newMediclaim.sumInsured}
-                    onChange={(e) => setNewMediclaim({ ...newMediclaim, sumInsured: e.target.value })}
-                    className="form-input"
-                  />
-                </div>
-                <div className="form-group flex-1">
-                  <label className="field-label">Validity Till</label>
-                  <input
-                    type="date"
-                    value={newMediclaim.validTill}
-                    onChange={(e) => setNewMediclaim({ ...newMediclaim, validTill: e.target.value })}
-                    className="form-input"
-                  />
-                </div>
+                <label className="field-label">Policy Number *</label>
+                <input
+                  type="text"
+                  value={newMediclaim.policyNumber}
+                  onChange={(e) => setNewMediclaim({ ...newMediclaim, policyNumber: e.target.value })}
+                  className="form-input"
+                  required
+                />
               </div>
 
               <div className="modal-actions">
                 <button type="button" onClick={() => setShowAddMediclaimModal(false)} className="btn btn-ghost">Cancel</button>
-                <button type="submit" className="btn btn-primary">Save Mediclaim Policy</button>
+                <button type="submit" className="btn btn-primary">Save Mediclaim</button>
               </div>
             </form>
           </div>
         </div>
       )}
 
-      {/* MODAL 3: Add Drug Allergy */}
-      {showAddAllergyModal && (
-        <div className="modal-overlay">
-          <div className="modal-card small-modal">
-            <div className="modal-header">
-              <h3>🚨 Add Drug Allergy Warning</h3>
-              <button type="button" onClick={() => setShowAddAllergyModal(false)} className="modal-close-btn">×</button>
-            </div>
-            <form onSubmit={handleAddAllergy} className="modal-form">
-              <div className="form-group">
-                <label className="field-label">Allergen / Drug Name *</label>
-                <input
-                  type="text"
-                  value={newAllergy.substance}
-                  onChange={(e) => setNewAllergy({ ...newAllergy, substance: e.target.value })}
-                  placeholder="e.g. Penicillin, Sulfa, Aspirin, Ceftriaxone"
-                  className="form-input"
-                  required
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="field-label">Severity Level</label>
-                <select
-                  value={newAllergy.severity}
-                  onChange={(e) => setNewAllergy({ ...newAllergy, severity: e.target.value })}
-                  className="form-select"
-                >
-                  <option value="HIGH ALERT (Severe)">HIGH ALERT (Severe / Anaphylaxis Risk)</option>
-                  <option value="Critical">Critical</option>
-                  <option value="Moderate">Moderate (Rash, Hives)</option>
-                  <option value="Mild">Mild</option>
-                </select>
-              </div>
-
-              <div className="form-group">
-                <label className="field-label">Clinical Reaction Description</label>
-                <input
-                  type="text"
-                  value={newAllergy.reaction}
-                  onChange={(e) => setNewAllergy({ ...newAllergy, reaction: e.target.value })}
-                  placeholder="e.g. Bronchospasm, facial swelling, tachycardia"
-                  className="form-input"
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="field-label">Diagnosing Hospital / Physician</label>
-                <input
-                  type="text"
-                  value={newAllergy.diagnosedBy}
-                  onChange={(e) => setNewAllergy({ ...newAllergy, diagnosedBy: e.target.value })}
-                  placeholder="e.g. Dr. A. K. Sharma (AIIMS)"
-                  className="form-input"
-                />
-              </div>
-
-              <div className="modal-actions">
-                <button type="button" onClick={() => setShowAddAllergyModal(false)} className="btn btn-ghost">Cancel</button>
-                <button type="submit" className="btn btn-danger">Broadcast Allergy Warning</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL 4: Add Medication Regimen */}
-      {showAddMedModal && (
-        <div className="modal-overlay">
-          <div className="modal-card small-modal">
-            <div className="modal-header">
-              <h3>Add Prescribed Medication</h3>
-              <button type="button" onClick={() => setShowAddMedModal(false)} className="modal-close-btn">×</button>
-            </div>
-            <form onSubmit={handleAddMedication} className="modal-form">
-              <div className="form-group">
-                <label className="field-label">Medicine Name & Strength *</label>
-                <input
-                  type="text"
-                  value={newMed.medicineName}
-                  onChange={(e) => setNewMed({ ...newMed, medicineName: e.target.value })}
-                  placeholder="e.g. Atorvastatin 20mg or Insulin Glargine"
-                  className="form-input"
-                  required
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="field-label">Dosage & Frequency</label>
-                <input
-                  type="text"
-                  value={newMed.dosage}
-                  onChange={(e) => setNewMed({ ...newMed, dosage: e.target.value })}
-                  placeholder="e.g. 1 tablet once daily at bedtime"
-                  className="form-input"
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="field-label">Medical Condition / Indication</label>
-                <input
-                  type="text"
-                  value={newMed.condition}
-                  onChange={(e) => setNewMed({ ...newMed, condition: e.target.value })}
-                  placeholder="e.g. Hyperlipidemia / Post-PTCA"
-                  className="form-input"
-                />
-              </div>
-
-              <div className="form-row">
-                <div className="form-group flex-1">
-                  <label className="field-label">Prescribing Hospital</label>
-                  <input
-                    type="text"
-                    value={newMed.prescribedHospital}
-                    onChange={(e) => setNewMed({ ...newMed, prescribedHospital: e.target.value })}
-                    placeholder="e.g. Fortis Healthcare"
-                    className="form-input"
-                  />
-                </div>
-                <div className="form-group flex-1">
-                  <label className="field-label">Doctor Name</label>
-                  <input
-                    type="text"
-                    value={newMed.doctorName}
-                    onChange={(e) => setNewMed({ ...newMed, doctorName: e.target.value })}
-                    placeholder="e.g. Dr. P. Joshi"
-                    className="form-input"
-                  />
-                </div>
-              </div>
-
-              <div className="modal-actions">
-                <button type="button" onClick={() => setShowAddMedModal(false)} className="btn btn-ghost">Cancel</button>
-                <button type="submit" className="btn btn-primary">Save Medication</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL 5: Cashless Pre-Auth Claim Simulator */}
+      {/* MODAL: CASHLESS PRE-AUTH CLAIM SIMULATOR */}
       {showCashlessPreAuthModal && selectedSchemeForPreAuth && (
         <div className="modal-overlay">
           <div className="modal-card">
@@ -1403,15 +1410,8 @@ export default function ProfileView({
 
             {!preAuthSuccessData ? (
               <form onSubmit={handleProcessPreAuth} className="modal-form">
-                <div className="alert-box alert-info">
-                  <Info size={16} />
-                  <span>
-                    This simulator mimics the national cashless desk API: Hospital submits treatment estimation, Aadhaar verification confirms identity, and the scheme pre-approves hospital admission without deposit!
-                  </span>
-                </div>
-
                 <div className="form-group">
-                  <label className="field-label">Empanelled Hospital Name</label>
+                  <label className="field-label">Empaneled Hospital Name</label>
                   <select
                     value={preAuthForm.hospitalName}
                     onChange={(e) => setPreAuthForm({ ...preAuthForm, hospitalName: e.target.value })}
@@ -1421,7 +1421,6 @@ export default function ProfileView({
                     <option value="Fortis Memorial Research Institute, Gurugram">Fortis Memorial Research Institute, Gurugram</option>
                     <option value="Max Super Speciality Hospital, Saket">Max Super Speciality Hospital, Saket</option>
                     <option value="AIIMS New Delhi Emergency Trauma Center">AIIMS New Delhi Emergency Trauma Center</option>
-                    <option value="Narayana Institute of Cardiac Sciences, Bengaluru">Narayana Institute of Cardiac Sciences, Bengaluru</option>
                   </select>
                 </div>
 
@@ -1435,34 +1434,21 @@ export default function ProfileView({
                   />
                 </div>
 
-                <div className="form-row">
-                  <div className="form-group flex-1">
-                    <label className="field-label">Estimated Cashless Claim Amount (₹)</label>
-                    <input
-                      type="number"
-                      value={preAuthForm.estimatedAmount}
-                      onChange={(e) => setPreAuthForm({ ...preAuthForm, estimatedAmount: e.target.value })}
-                      max={selectedSchemeForPreAuth.availableBalance}
-                      className="form-input"
-                      required
-                    />
-                  </div>
-                  <div className="form-group flex-1">
-                    <label className="field-label">Attending Specialist Doctor</label>
-                    <input
-                      type="text"
-                      value={preAuthForm.treatingDoctor}
-                      onChange={(e) => setPreAuthForm({ ...preAuthForm, treatingDoctor: e.target.value })}
-                      className="form-input"
-                    />
-                  </div>
+                <div className="form-group">
+                  <label className="field-label">Estimated Cashless Claim Amount (₹)</label>
+                  <input
+                    type="number"
+                    value={preAuthForm.estimatedAmount}
+                    onChange={(e) => setPreAuthForm({ ...preAuthForm, estimatedAmount: e.target.value })}
+                    className="form-input"
+                    required
+                  />
                 </div>
 
                 <div className="modal-actions">
                   <button type="button" onClick={() => setShowCashlessPreAuthModal(false)} className="btn btn-ghost">Cancel</button>
                   <button type="submit" className="btn btn-emerald btn-large">
-                    <CheckCircle size={18} />
-                    <span>Generate Instant Cashless Approval Token</span>
+                    <CheckCircle size={18} /> Generate Instant Cashless Token
                   </button>
                 </div>
               </form>
@@ -1472,38 +1458,18 @@ export default function ProfileView({
                   <CheckCircle size={48} className="text-emerald" />
                 </div>
                 <h3 className="success-title">Cashless Pre-Authorization Approved!</h3>
-                <p className="success-subtitle">
-                  Hospital admission token generated. Zero deposit required at admission counter.
-                </p>
-
                 <div className="approval-slip">
                   <div className="slip-row">
-                    <span>Pre-Auth Reference ID:</span>
+                    <span>Reference ID:</span>
                     <strong className="font-mono text-emerald">{preAuthSuccessData.refNumber}</strong>
-                  </div>
-                  <div className="slip-row">
-                    <span>Patient Name:</span>
-                    <strong>{profile.fullName}</strong>
-                  </div>
-                  <div className="slip-row">
-                    <span>Linked Aadhaar:</span>
-                    <strong className="font-mono">{maskAadhaar(profile.aadhaarNumber)}</strong>
-                  </div>
-                  <div className="slip-row">
-                    <span>Scheme Utilized:</span>
-                    <strong>{preAuthSuccessData.scheme}</strong>
-                  </div>
-                  <div className="slip-row">
-                    <span>Empanelled Hospital:</span>
-                    <strong>{preAuthSuccessData.hospital}</strong>
                   </div>
                   <div className="slip-row">
                     <span>Approved Amount:</span>
                     <strong className="text-emerald font-large">{formatCurrencyINR(preAuthSuccessData.approvedAmount)}</strong>
                   </div>
                   <div className="slip-row">
-                    <span>Timestamp:</span>
-                    <span>{preAuthSuccessData.timestamp}</span>
+                    <span>Hospital:</span>
+                    <strong>{preAuthSuccessData.hospital}</strong>
                   </div>
                 </div>
 
@@ -1513,22 +1479,13 @@ export default function ProfileView({
                     onClick={() => setShowCashlessPreAuthModal(false)}
                     className="btn btn-primary full-width"
                   >
-                    Done & Return to Profile
+                    Done & Return
                   </button>
                 </div>
               </div>
             )}
           </div>
         </div>
-      )}
-
-      {/* REPORT VIEWER MODAL FOR PATIENT */}
-      {selectedReportForPatientView && (
-        <ReportViewerModal
-          report={selectedReportForPatientView}
-          patient={profile}
-          onClose={() => setSelectedReportForPatientView(null)}
-        />
       )}
     </div>
   );

@@ -411,6 +411,103 @@ export const INITIAL_PROFILES = [
         treatingDoctor: "Dr. K. Swaminathan (Pulmonology)",
         cashlessProcessedUnder: "PM-JAY Cashless (Claim Ref: PMJ-77219)"
       }
+    ],
+
+    // Actionable Pending Diagnostic Test Orders
+    pendingTestOrders: [
+      {
+        id: "ord-1",
+        testName: "HbA1c (Glycated Hemoglobin) by HPLC",
+        code: "LOINC: 4548-4",
+        category: "Biochemistry",
+        orderedBy: "Dr. Reena Sen (Fortis Escorts)",
+        orderDate: "2026-11-08",
+        urgency: "Fasting, tomorrow morning",
+        status: "Pending Schedule",
+        estimatedCostRange: "₹120 - ₹650",
+        preparation: "10-12 hours overnight fasting mandatory"
+      },
+      {
+        id: "ord-2",
+        testName: "Complete Blood Count (CBC) with ESR & Platelets",
+        code: "LOINC: 58410-2",
+        category: "Hematology",
+        orderedBy: "Dr. Priya Nair (AIIMS Emergency)",
+        orderDate: "2026-11-09",
+        urgency: "Within 24 hours",
+        status: "Pending Schedule",
+        estimatedCostRange: "₹80 - ₹460",
+        preparation: "No fasting required"
+      }
+    ],
+
+    // Smart Medication Pill Reminders
+    medicationReminders: [
+      {
+        id: "rem-1",
+        medicineName: "Telmisartan 40mg",
+        time: "08:00 AM",
+        intake: "Post-meal (Morning)",
+        dosage: "1 tablet",
+        isActive: true,
+        lastTaken: "Today 08:15 AM",
+        history: "Taken"
+      },
+      {
+        id: "rem-2",
+        medicineName: "Metformin 500mg SR",
+        time: "08:30 PM",
+        intake: "With dinner",
+        dosage: "1 tablet",
+        isActive: true,
+        lastTaken: "Yesterday 08:45 PM",
+        history: "Pending"
+      }
+    ],
+
+    // Consent & Access Management (Account Aggregator Gateway)
+    consentLogs: [
+      {
+        id: "con-1",
+        doctorId: "doc-101",
+        doctorName: "Dr. Priya Nair",
+        doctorReg: "MCI-2012-88219",
+        hospital: "AIIMS New Delhi Emergency Trauma Center",
+        requestedAt: "2026-11-09 10:15 AM",
+        purpose: "Emergency Clinical Assessment & Drug Interaction Verification",
+        scope: "Past 12 Months Diagnostic Reports, Allergies & Active Regimens",
+        validUntil: "2026-11-16 (Active - 7 Days)",
+        status: "Approved",
+        isBreakGlass: false
+      },
+      {
+        id: "con-2",
+        doctorId: "doc-102",
+        doctorName: "Dr. Arvind Mehta",
+        doctorReg: "DMC-2008-44210",
+        hospital: "Max Super Speciality Hospital, Saket",
+        requestedAt: "2025-10-14 09:30 AM",
+        purpose: "Pulmonary Infection Consultation & Inpatient Treatment",
+        scope: "Full Longitudinal Health History",
+        validUntil: "2025-10-21 (Expired)",
+        status: "Expired",
+        isBreakGlass: false
+      }
+    ],
+
+    // Break-Glass Emergency Overrides (Mandatory Audit Trail - DPDP Act 2023)
+    breakGlassLogs: [
+      {
+        id: "bg-1",
+        timestamp: "2026-11-09 10:20:14 IST",
+        hospital: "AIIMS New Delhi Emergency Trauma Center",
+        doctorName: "Dr. Priya Nair, MD",
+        doctorReg: "MCI-2012-88219",
+        clinicalJustification: "Patient brought in with acute severe bronchospasm and severe hypoxemia (SpO2 89%). Immediate access required to inspect high-alert drug allergies and avoid fatal penicillin/NSAID administration.",
+        patientSmsNotified: true,
+        emergencyContactNotified: "+91 98765 43219 (Sunita Sharma - Spouse)",
+        auditRetentionPeriod: "7 Years (DPDP Act 2023 Compliant)"
+      }
     ]
   },
   {

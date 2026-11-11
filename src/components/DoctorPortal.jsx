@@ -1,12 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Stethoscope, AlertTriangle, FileText, Image, Search, PlusCircle, 
   Clock, CheckCircle, Calendar, Building2, User, HeartPulse, 
   Activity, ShieldCheck, AlertOctagon, Download, UploadCloud, 
-  MapPin, Phone, ArrowLeft, Bed, Plus, Trash2, CheckSquare 
+  MapPin, Phone, ArrowLeft, Bed, Plus, Trash2, CheckSquare, 
+  Mic, MicOff, DollarSign, Sparkles, Flame, ShieldAlert, 
+  Layers, ShoppingBag, Eye, ArrowRight 
 } from 'lucide-react';
 import { maskAadhaar, calculateAge, formatCurrencyINR } from '../utils/helpers';
 import ReportViewerModal from './ReportViewerModal';
+import { MASTER_DRUG_DATABASE, DIAGNOSTIC_TEST_CATALOG } from '../data/catalogData';
 
 export default function DoctorPortal({ 
   currentDoctor, 
@@ -17,19 +20,34 @@ export default function DoctorPortal({
   onSwitchDoctor 
 }) {
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState('diagnostics'); // 'diagnostics', 'visits', 'inpatient', 'emergency'
+  const [activeTab, setActiveTab] = useState('diagnostics'); // 'diagnostics', 'visits', 'inpatient', 'order_tests', 'emergency'
   const [selectedReportForView, setSelectedReportForView] = useState(null);
   
-  // Modals inside doctor portal
+  // Modals
   const [showAddVisitModal, setShowAddVisitModal] = useState(false);
   const [showAddReportModal, setShowAddReportModal] = useState(false);
   const [showAddDailyRoundModal, setShowAddDailyRoundModal] = useState(false);
   const [showAdmitPatientModal, setShowAdmitPatientModal] = useState(false);
+  const [showBreakGlassModal, setShowBreakGlassModal] = useState(false);
+  const [showOrderTestModal, setShowOrderTestModal] = useState(false);
   
   const patient = profiles.find(p => p.id === activeProfileId) || profiles[0];
 
   // Filter for reports
   const [reportCategoryFilter, setReportCategoryFilter] = useState('ALL');
+
+  // Speech Recognition (Web Speech API for Zero-Handwriting Policy)
+  const [isDictating, setIsDictating] = useState(false);
+  const [dictationTarget, setDictationTarget] = useState('complaints'); // 'complaints' | 'examination' | 'diagnosis'
+  const [dictationTranscript, setDictationTranscript] = useState('');
+
+  // Break-Glass State
+  const [breakGlassJustification, setBreakGlassJustification] = useState('');
+  const [breakGlassSuccessNotice, setBreakGlassSuccessNotice] = useState(null);
+
+  // Diagnostic Test Ordering State
+  const [selectedTestToOrder, setSelectedTestToOrder] = useState(DIAGNOSTIC_TEST_CATALOG[0]);
+  const [testOrderUrgency, setTestOrderUrgency] = useState('Fasting, tomorrow morning');
 
   // Form states: New Consultation / Visit
   const [newVisit, setNewVisit] = useState({
@@ -43,10 +61,24 @@ export default function DoctorPortal({
     diagnosis: '',
     treatmentDetails: '',
     prescriptions: [
-      { drug: '', dosage: '', duration: '', instructions: '' }
+      { 
+        drug: '', 
+        genericEquivalent: '',
+        genericSavings: '',
+        frequency: '1-0-1', 
+        duration: '5 days', 
+        intake: 'Post-meal',
+        route: 'Oral',
+        instructions: '' 
+      }
     ],
-    followUpAdvice: 'Review after 5 days or if symptoms persist.'
+    followUpAdvice: 'Review after 5 days or if symptoms worsen.'
   });
+
+  // Master Drug Search State for Smart E-Prescription
+  const [drugSearchQuery, setDrugSearchQuery] = useState('');
+  const [filteredDrugSuggestions, setFilteredDrugSuggestions] = useState([]);
+  const [activeRxRowIndex, setActiveRxRowIndex] = useState(0);
 
   // Form states: New Diagnostic Report
   const [newReport, setNewReport] = useState({
@@ -88,6 +120,140 @@ export default function DoctorPortal({
     cashlessScheme: 'PM-JAY Cashless Emergency'
   });
 
+  // Web Speech API initialization
+  useEffect(() => {
+    let recognition = null;
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    if (SpeechRecognition && isDictating) {
+      try {
+        recognition = new SpeechRecognition();
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognition.lang = 'en-IN';
+
+        recognition.onresult = (event) => {
+          let current = '';
+          for (let i = event.resultIndex; i < event.results.length; i++) {
+            current += event.results[i][0].transcript;
+          }
+          setDictationTranscript(current);
+
+          if (dictationTarget === 'complaints') {
+            setNewVisit(prev => ({ ...prev, chiefComplaints: (prev.chiefComplaints ? prev.chiefComplaints + ' ' : '') + current }));
+          } else if (dictationTarget === 'examination') {
+            setNewVisit(prev => ({ ...prev, clinicalExamination: (prev.clinicalExamination ? prev.clinicalExamination + ' ' : '') + current }));
+          } else if (dictationTarget === 'diagnosis') {
+            setNewVisit(prev => ({ ...prev, diagnosis: current }));
+          }
+        };
+
+        recognition.onerror = (e) => {
+          console.warn('Speech recognition error:', e);
+          setIsDictating(false);
+        };
+
+        recognition.onend = () => {
+          setIsDictating(false);
+        };
+
+        recognition.start();
+      } catch (err) {
+        console.warn('Web Speech API not started:', err);
+        setIsDictating(false);
+      }
+    }
+
+    return () => {
+      if (recognition) {
+        try { recognition.stop(); } catch (e) {}
+      }
+    };
+  }, [isDictating, dictationTarget]);
+
+  // Drug auto-complete handler
+  const handleDrugSearch = (query, rowIndex) => {
+    setDrugSearchQuery(query);
+    setActiveRxRowIndex(rowIndex);
+    if (!query.trim()) {
+      setFilteredDrugSuggestions([]);
+      return;
+    }
+    const q = query.toLowerCase();
+    const matches = MASTER_DRUG_DATABASE.filter(d => 
+      d.brandName.toLowerCase().includes(q) || 
+      d.genericName.toLowerCase().includes(q) ||
+      d.therapeuticCategory.toLowerCase().includes(q)
+    );
+    setFilteredDrugSuggestions(matches);
+  };
+
+  const handleSelectDrugSuggestion = (drug, rowIndex) => {
+    const updated = [...newVisit.prescriptions];
+    updated[rowIndex] = {
+      ...updated[rowIndex],
+      drug: drug.brandName,
+      genericEquivalent: drug.genericAlternative.name,
+      genericSavings: `Save ${drug.genericAlternative.savingsPercent}% (₹${drug.brandPrice} → ₹${drug.genericAlternative.price})`,
+      genericPrice: drug.genericAlternative.price,
+      brandPrice: drug.brandPrice,
+      frequency: drug.defaultFrequency,
+      duration: drug.defaultDuration,
+      intake: drug.intakeInstruction,
+      route: drug.route
+    };
+    setNewVisit(prev => ({ ...prev, prescriptions: updated }));
+    setFilteredDrugSuggestions([]);
+    setDrugSearchQuery('');
+  };
+
+  // Smart Generic Substitution
+  const handleSubstituteGeneric = (rowIndex) => {
+    const rx = newVisit.prescriptions[rowIndex];
+    if (!rx.genericEquivalent) return;
+
+    const updated = [...newVisit.prescriptions];
+    updated[rowIndex] = {
+      ...updated[rowIndex],
+      drug: rx.genericEquivalent,
+      genericSavings: 'Substituted: Cost-effective Generic Applied'
+    };
+    setNewVisit(prev => ({ ...prev, prescriptions: updated }));
+  };
+
+  // Add Prescription Row
+  const handleAddRxRow = () => {
+    setNewVisit(prev => ({
+      ...prev,
+      prescriptions: [
+        ...prev.prescriptions, 
+        { 
+          drug: '', 
+          genericEquivalent: '',
+          genericSavings: '',
+          frequency: '1-0-1', 
+          duration: '5 days', 
+          intake: 'Post-meal',
+          route: 'Oral',
+          instructions: '' 
+        }
+      ]
+    }));
+  };
+
+  const handleUpdateRxRow = (index, field, value) => {
+    const updated = [...newVisit.prescriptions];
+    updated[index][field] = value;
+    setNewVisit(prev => ({ ...prev, prescriptions: updated }));
+  };
+
+  const handleRemoveRxRow = (index) => {
+    setNewVisit(prev => ({
+      ...prev,
+      prescriptions: prev.prescriptions.filter((_, i) => i !== index)
+    }));
+  };
+
   // Search handler
   const handleSearch = (e) => {
     e.preventDefault();
@@ -108,25 +274,59 @@ export default function DoctorPortal({
     }
   };
 
-  // Add Prescription Row in New Visit Modal
-  const handleAddRxRow = () => {
-    setNewVisit(prev => ({
-      ...prev,
-      prescriptions: [...prev.prescriptions, { drug: '', dosage: '', duration: '', instructions: '' }]
-    }));
+  // Submit Break-Glass Protocol (FR-05, DPDP Act 2023)
+  const handleBreakGlassSubmit = (e) => {
+    e.preventDefault();
+    if (!breakGlassJustification.trim()) {
+      alert('Mandatory clinical justification is legally required for emergency break-glass access under the DPDP Act.');
+      return;
+    }
+
+    const logEntry = {
+      id: `bg-${Date.now()}`,
+      timestamp: new Date().toLocaleString('en-IN') + ' IST',
+      hospital: currentDoctor.hospitalName,
+      doctorName: currentDoctor.name,
+      doctorReg: currentDoctor.regNumber,
+      clinicalJustification: breakGlassJustification,
+      patientSmsNotified: true,
+      emergencyContactNotified: `${patient.emergencyContact?.name} (${patient.emergencyContact?.phone})`,
+      auditRetentionPeriod: '7 Years (DPDP Act 2023 Compliant)'
+    };
+
+    onUpdateProfile({
+      ...patient,
+      breakGlassLogs: [logEntry, ...(patient.breakGlassLogs || [])]
+    });
+
+    setShowBreakGlassModal(false);
+    setBreakGlassSuccessNotice(logEntry);
+    setBreakGlassJustification('');
   };
 
-  const handleUpdateRxRow = (index, field, value) => {
-    const updated = [...newVisit.prescriptions];
-    updated[index][field] = value;
-    setNewVisit(prev => ({ ...prev, prescriptions: updated }));
-  };
+  // Submit Diagnostic Test Order (Section 9.3)
+  const handleOrderDiagnosticTest = (e) => {
+    e.preventDefault();
+    const orderItem = {
+      id: `ord-${Date.now()}`,
+      testName: selectedTestToOrder.testName,
+      code: selectedTestToOrder.code,
+      category: selectedTestToOrder.category,
+      orderedBy: `${currentDoctor.name} (${currentDoctor.hospitalName})`,
+      orderDate: new Date().toISOString().split('T')[0],
+      urgency: testOrderUrgency,
+      status: 'Pending Schedule',
+      estimatedCostRange: `₹${selectedTestToOrder.minPrice} - ₹${selectedTestToOrder.maxPrice}`,
+      preparation: selectedTestToOrder.preparation
+    };
 
-  const handleRemoveRxRow = (index) => {
-    setNewVisit(prev => ({
-      ...prev,
-      prescriptions: prev.prescriptions.filter((_, i) => i !== index)
-    }));
+    onUpdateProfile({
+      ...patient,
+      pendingTestOrders: [orderItem, ...(patient.pendingTestOrders || [])]
+    });
+
+    setShowOrderTestModal(false);
+    alert(`Test order created: "${selectedTestToOrder.testName}" (Urgency: ${testOrderUrgency}). Synced to patient portal.`);
   };
 
   // Submit New Visit / Consultation
@@ -168,7 +368,14 @@ export default function DoctorPortal({
       clinicalExamination: newVisit.clinicalExamination,
       diagnosis: newVisit.diagnosis,
       treatmentDetails: newVisit.treatmentDetails,
-      prescriptions: newVisit.prescriptions.filter(p => p.drug.trim() !== ''),
+      prescriptions: newVisit.prescriptions
+        .filter(p => p.drug.trim() !== '')
+        .map(p => ({
+          drug: p.drug,
+          dosage: `${p.frequency} (${p.intake})`,
+          duration: p.duration,
+          instructions: `${p.route} • ${p.instructions || 'As advised'}`
+        })),
       followUpAdvice: newVisit.followUpAdvice
     };
 
@@ -178,7 +385,7 @@ export default function DoctorPortal({
     });
 
     setShowAddVisitModal(false);
-    alert('Visit consultation recorded and synchronized with patient health record!');
+    alert('Visit consultation recorded with Smart E-Prescriptions and synced to national health ledger!');
   };
 
   // Submit New Diagnostic Report
@@ -239,7 +446,6 @@ export default function DoctorPortal({
       dietAndFluids: newDailyRound.dietAndFluids
     };
 
-    // Update the active hospitalization
     const currentHosp = (patient.hospitalizations || [])[0];
     if (currentHosp) {
       const updatedHosp = {
@@ -250,31 +456,13 @@ export default function DoctorPortal({
         ...patient,
         hospitalizations: [updatedHosp, ...(patient.hospitalizations.slice(1))]
       });
-    } else {
-      // Create new hospitalization if none existed
-      const newHosp = {
-        id: `ipd-${Date.now()}`,
-        status: 'Currently Hospitalized (Under Observation)',
-        admissionDate: new Date().toISOString().split('T')[0],
-        dischargeDate: 'Active Admission',
-        wardBed: 'Inpatient Observation Bed 01',
-        admittingHospital: currentDoctor.hospitalName,
-        hospitalAddress: currentDoctor.hospitalAddress,
-        attendingDoctor: currentDoctor.name,
-        admissionDiagnosis: 'Inpatient Clinical Observation',
-        dailyObservationLogs: [roundItem]
-      };
-      onUpdateProfile({
-        ...patient,
-        hospitalizations: [newHosp]
-      });
     }
 
     setShowAddDailyRoundModal(false);
     alert('Daily observation clinical round added to patient chart!');
   };
 
-  // Submit Admission
+  // Submit Inpatient Admission
   const handleAdmitPatient = (e) => {
     e.preventDefault();
     const newHosp = {
@@ -326,7 +514,6 @@ export default function DoctorPortal({
   const activeHospitalization = (patient.hospitalizations || []).find(h => h.status.includes('Currently'));
   const age = calculateAge(patient.dob);
 
-  // Filtered reports
   const filteredReports = (patient.diagnosticReports || []).filter(r => {
     if (reportCategoryFilter === 'ALL') return true;
     return r.category.toLowerCase().includes(reportCategoryFilter.toLowerCase());
@@ -344,11 +531,11 @@ export default function DoctorPortal({
             <div className="doc-name-row">
               <h2 className="doctor-name">{currentDoctor.name}</h2>
               <span className="badge badge-emerald">
-                <ShieldCheck size={13} /> NMC Verified Physician
+                <ShieldCheck size={13} /> NMC Verified Medical Officer
               </span>
             </div>
             <p className="doctor-creds">
-              <strong>{currentDoctor.qualification}</strong> • Reg No: <span className="font-mono text-cyan">{currentDoctor.regNumber}</span>
+              <strong>{currentDoctor.qualification}</strong> • Reg: <span className="font-mono text-cyan">{currentDoctor.regNumber}</span> • {currentDoctor.specialty}
             </p>
             <div className="hospital-affiliation-row">
               <Building2 size={15} className="text-muted" />
@@ -358,15 +545,48 @@ export default function DoctorPortal({
         </div>
 
         <div className="doctor-header-action-btns">
+          {/* Break-Glass Emergency Bypass Button (FR-05) */}
+          <button
+            type="button"
+            onClick={() => setShowBreakGlassModal(true)}
+            className="btn btn-emergency btn-sm"
+            title="Break-Glass: Emergency Access Override when patient OTP is unavailable"
+          >
+            <Flame size={15} />
+            <span>Break-Glass Access</span>
+          </button>
+
           <button
             type="button"
             onClick={onSwitchDoctor}
             className="btn btn-secondary btn-sm"
           >
-            Change Doctor Credentials
+            Switch Doctor
           </button>
         </div>
       </div>
+
+      {/* Break-Glass Notification Alert if triggered */}
+      {breakGlassSuccessNotice && (
+        <div className="alert-box alert-error flex-between">
+          <div className="flex-center gap-2">
+            <ShieldAlert size={20} className="text-rose" />
+            <div>
+              <strong>BREAK-GLASS EMERGENCY OVERRIDE ACTIVE</strong>
+              <p className="text-sm">
+                Access authorized by {breakGlassSuccessNotice.doctorName}. Mandatory SMS broadcast to {breakGlassSuccessNotice.emergencyContactNotified}. Logged for 7-year statutory audit per DPDP Act 2023.
+              </p>
+            </div>
+          </div>
+          <button 
+            type="button" 
+            onClick={() => setBreakGlassSuccessNotice(null)}
+            className="btn btn-ghost btn-sm"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
 
       {/* Patient Search & Selection Strip */}
       <div className="patient-selector-strip">
@@ -376,7 +596,7 @@ export default function DoctorPortal({
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search Patient by 12-digit Aadhaar / VitalTrace ID / Name..."
+            placeholder="Search Patient by UHID / 12-digit Aadhaar / Phone / Name..."
             className="patient-search-input"
           />
           <button type="submit" className="btn btn-primary">
@@ -418,13 +638,13 @@ export default function DoctorPortal({
               )}
             </div>
             <div className="banner-meta-line">
-              <span>Aadhaar: <strong className="font-mono">{maskAadhaar(patient.aadhaarNumber)}</strong></span>
+              <span>UHID: <strong className="font-mono">{patient.vitalTraceId}</strong></span>
               <span>•</span>
-              <span>VitalTrace ID: <strong className="font-mono">{patient.vitalTraceId}</strong></span>
+              <span>Aadhaar: <strong className="font-mono">{maskAadhaar(patient.aadhaarNumber)}</strong></span>
               <span>•</span>
               <span>Age: <strong>{age} yrs ({patient.gender})</strong></span>
               <span>•</span>
-              <span>Phone: <strong>{patient.phone || patient.emergencyContact?.phone}</strong></span>
+              <span>Emergency: <strong>{patient.emergencyContact?.name} ({patient.emergencyContact?.phone})</strong></span>
             </div>
           </div>
         </div>
@@ -481,8 +701,17 @@ export default function DoctorPortal({
           onClick={() => setActiveTab('visits')}
         >
           <Stethoscope size={17} />
-          <span>Past Doctor Visits & Prescriptions</span>
+          <span>Past Doctor Visits & E-Prescriptions</span>
           <span className="doc-tab-count">{patient.doctorVisits?.length || 0}</span>
+        </button>
+
+        <button
+          className={`doc-tab-btn ${activeTab === 'order_tests' ? 'doc-tab-active' : ''}`}
+          onClick={() => setActiveTab('order_tests')}
+        >
+          <DollarSign size={17} />
+          <span>Order Diagnostic Tests & Local Pricing</span>
+          <span className="badge badge-emerald">LOINC Mapped</span>
         </button>
 
         <button
@@ -499,7 +728,7 @@ export default function DoctorPortal({
           onClick={() => setActiveTab('emergency')}
         >
           <Activity size={17} />
-          <span>Active Medications & Cashless Schemes</span>
+          <span>Active Regimens & Cashless Insurance</span>
         </button>
       </div>
 
@@ -582,27 +811,20 @@ export default function DoctorPortal({
               <div className="empty-state-box full-width">
                 <FileText size={40} className="text-muted" />
                 <p>No diagnostic reports found under "{reportCategoryFilter}".</p>
-                <button
-                  type="button"
-                  onClick={() => setShowAddReportModal(true)}
-                  className="btn btn-secondary btn-sm"
-                >
-                  Upload New Report
-                </button>
               </div>
             )}
           </div>
         </section>
       )}
 
-      {/* TAB 2: PAST DOCTOR VISITS & PRESCRIPTIONS */}
+      {/* TAB 2: PAST DOCTOR VISITS & SMART E-PRESCRIPTIONS */}
       {activeTab === 'visits' && (
         <section className="doc-tab-content">
           <div className="section-action-header">
             <div>
-              <h3 className="section-title">Past Doctor Consultations & Prescriptions</h3>
+              <h3 className="section-title">Past Consultations & Smart E-Prescriptions</h3>
               <p className="section-subtitle">
-                Consolidated clinical visits across different hospitals with full doctor credentials, facility addresses, examination findings, and itemized prescriptions.
+                Consolidated clinical visits across different hospitals with full doctor credentials, facility addresses, examination findings, and itemized prescriptions with smart generic substitution.
               </p>
             </div>
             <button
@@ -610,7 +832,7 @@ export default function DoctorPortal({
               onClick={() => setShowAddVisitModal(true)}
               className="btn btn-emerald"
             >
-              <Plus size={16} /> Document Current Visit / Consultation
+              <Plus size={16} /> Document Current Visit (Voice / Smart Rx)
             </button>
           </div>
 
@@ -645,22 +867,22 @@ export default function DoctorPortal({
                     </div>
                   </div>
 
-                  {/* Vitals & Chief Complaints */}
+                  {/* Vitals */}
                   <div className="visit-vitals-strip">
                     <div className="vital-item">
-                      <span className="vital-lbl">Blood Pressure</span>
+                      <span className="vital-lbl">BP</span>
                       <strong className="vital-val">{vis.vitals?.bp || 'N/A'}</strong>
                     </div>
                     <div className="vital-item">
-                      <span className="vital-lbl">Pulse Rate</span>
+                      <span className="vital-lbl">Pulse</span>
                       <strong className="vital-val">{vis.vitals?.pulse || 'N/A'}</strong>
                     </div>
                     <div className="vital-item">
-                      <span className="vital-lbl">Temperature</span>
+                      <span className="vital-lbl">Temp</span>
                       <strong className="vital-val">{vis.vitals?.temp || 'N/A'}</strong>
                     </div>
                     <div className="vital-item">
-                      <span className="vital-lbl">SpO2 Oxygen</span>
+                      <span className="vital-lbl">SpO2</span>
                       <strong className="vital-val text-emerald">{vis.vitals?.spo2 || 'N/A'}</strong>
                     </div>
                     <div className="vital-item">
@@ -683,7 +905,7 @@ export default function DoctorPortal({
                       <strong className="text-rose font-large">{vis.diagnosis}</strong>
                     </div>
                     <div className="findings-row">
-                      <span className="findings-heading">Treatment Administered:</span>
+                      <span className="findings-heading">Treatment Details:</span>
                       <p>{vis.treatmentDetails}</p>
                     </div>
                   </div>
@@ -699,7 +921,7 @@ export default function DoctorPortal({
                               <th>Medicine / Formulation</th>
                               <th>Dosage & Frequency</th>
                               <th>Duration</th>
-                              <th>Instructions</th>
+                              <th>Intake Instructions</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -729,20 +951,78 @@ export default function DoctorPortal({
               <div className="empty-state-box full-width">
                 <Stethoscope size={40} className="text-muted" />
                 <p>No past doctor consultations recorded for this patient.</p>
-                <button
-                  type="button"
-                  onClick={() => setShowAddVisitModal(true)}
-                  className="btn btn-primary btn-sm"
-                >
-                  Document Current Visit
-                </button>
               </div>
             )}
           </div>
         </section>
       )}
 
-      {/* TAB 3: INPATIENT & DAILY OBSERVATION ROUNDS */}
+      {/* TAB 3: DIAGNOSTIC TEST ORDERING & LOCAL PRICING (Section 9.3) */}
+      {activeTab === 'order_tests' && (
+        <section className="doc-tab-content">
+          <div className="section-action-header">
+            <div>
+              <h3 className="section-title">Diagnostic Test Catalog & Hyperlocal Pricing</h3>
+              <p className="section-subtitle">
+                Select pathology and radiology tests mapped to standard LOINC codes. Review price transparency across empaneled labs in patient's area to inform them of out-of-pocket expenses.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowOrderTestModal(true)}
+              className="btn btn-primary"
+            >
+              <PlusCircle size={16} /> Order New Diagnostic Test
+            </button>
+          </div>
+
+          <div className="test-catalog-grid">
+            {DIAGNOSTIC_TEST_CATALOG.map((test) => (
+              <div key={test.id} className="test-order-card">
+                <div className="test-card-top">
+                  <span className="badge badge-cyan">{test.category}</span>
+                  <span className="loinc-tag font-mono">{test.code}</span>
+                </div>
+
+                <h4 className="test-title">{test.testName}</h4>
+                <p className="test-prep text-sm">
+                  <strong>Preparation:</strong> {test.preparation} • Specimen: {test.specimen}
+                </p>
+
+                <div className="pricing-range-box">
+                  <div className="price-header">
+                    <span className="text-muted text-sm">Estimated Local Price Range:</span>
+                    <strong className="text-emerald font-large">₹{test.minPrice} - ₹{test.maxPrice}</strong>
+                  </div>
+                  <div className="labs-comparison-list">
+                    {test.hyperlocalPricing.map((lab, idx) => (
+                      <div key={idx} className="lab-price-row">
+                        <span>{lab.labName} (★ {lab.rating})</span>
+                        <strong>₹{lab.price} <span className="turnaround-text">({lab.turnaround})</span></strong>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="test-card-actions">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedTestToOrder(test);
+                      setShowOrderTestModal(true);
+                    }}
+                    className="btn btn-emerald full-width"
+                  >
+                    <PlusCircle size={15} /> Order for Patient
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* TAB 4: INPATIENT & DAILY OBSERVATION ROUNDS */}
       {activeTab === 'inpatient' && (
         <section className="doc-tab-content">
           <div className="section-action-header">
@@ -775,7 +1055,6 @@ export default function DoctorPortal({
 
           {activeHospitalization ? (
             <div className="active-inpatient-container">
-              {/* Active Hospitalization Admission Card */}
               <div className="admission-status-banner">
                 <div className="status-banner-head">
                   <div className="ward-icon-wrap">
@@ -846,7 +1125,7 @@ export default function DoctorPortal({
                         <span>Attending Physician: <strong>{log.attendingDoctor}</strong> • Recorded: {log.date}</span>
                       </div>
 
-                      {/* Daily Vitals Grid */}
+                      {/* Daily Vitals */}
                       <div className="daily-vitals-row">
                         <div className="daily-vital-box">
                           <span className="dv-label">BP</span>
@@ -878,7 +1157,6 @@ export default function DoctorPortal({
                         </div>
                       </div>
 
-                      {/* Clinical Progress Notes */}
                       <div className="round-notes-box">
                         <span className="note-heading">Progress Note:</span>
                         <p className="note-body">{log.progressNotes}</p>
@@ -922,7 +1200,7 @@ export default function DoctorPortal({
         </section>
       )}
 
-      {/* TAB 4: ACTIVE MEDICATIONS & CASHLESS SCHEMES */}
+      {/* TAB 5: ACTIVE MEDICATIONS & CASHLESS SCHEMES */}
       {activeTab === 'emergency' && (
         <section className="doc-tab-content">
           <div className="section-action-header">
@@ -935,7 +1213,6 @@ export default function DoctorPortal({
           </div>
 
           <div className="hud-grid-2">
-            {/* Medications */}
             <div className="hud-panel">
               <div className="hud-panel-title">
                 <HeartPulse size={18} className="text-cyan" />
@@ -966,7 +1243,6 @@ export default function DoctorPortal({
               </div>
             </div>
 
-            {/* Cashless Schemes */}
             <div className="hud-panel">
               <div className="hud-panel-title">
                 <Building2 size={18} className="text-emerald" />
@@ -1016,30 +1292,69 @@ export default function DoctorPortal({
         />
       )}
 
-      {/* MODAL: DOCUMENT CURRENT VISIT */}
+      {/* MODAL: DOCUMENT CURRENT VISIT WITH VOICE DICTATION & SMART RX */}
       {showAddVisitModal && (
         <div className="modal-overlay">
-          <div className="modal-card">
+          <div className="modal-card large-modal">
             <div className="modal-header">
               <div className="modal-header-icon">
                 <Stethoscope size={24} className="text-emerald" />
               </div>
               <div>
-                <h3 className="modal-title">Document Consultation / Clinical Visit</h3>
+                <h3 className="modal-title">Document Consultation & Smart E-Prescription</h3>
                 <p className="modal-subtitle">
-                  {currentDoctor.name} • {currentDoctor.hospitalName}
+                  AI Voice-to-Text Dictation (Zero-Handwriting Mandate) • Smart Generic Medicine Substitution
                 </p>
               </div>
               <button type="button" onClick={() => setShowAddVisitModal(false)} className="modal-close-btn">×</button>
             </div>
 
             <form onSubmit={handleSaveVisit} className="modal-form">
+              {/* Voice-to-Text Dictation Control Bar */}
+              <div className="voice-dictation-control-bar">
+                <div className="voice-status-left">
+                  <span className={`voice-mic-indicator ${isDictating ? 'mic-pulse' : ''}`}>
+                    {isDictating ? <Mic size={18} className="text-rose" /> : <MicOff size={18} className="text-muted" />}
+                  </span>
+                  <div>
+                    <strong>AI Voice-to-Text Clinical Dictation</strong>
+                    <span className="voice-subtext">
+                      {isDictating ? 'Listening... Speak symptoms, clinical findings or diagnosis clearly' : 'Click "Start Voice Dictation" to capture clinical narrative hands-free'}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="voice-actions">
+                  <select
+                    value={dictationTarget}
+                    onChange={(e) => setDictationTarget(e.target.value)}
+                    className="form-select form-select-sm"
+                  >
+                    <option value="complaints">Dictate into Chief Complaints</option>
+                    <option value="examination">Dictate into Clinical Examination</option>
+                    <option value="diagnosis">Dictate into Diagnosis</option>
+                  </select>
+
+                  <button
+                    type="button"
+                    onClick={() => setIsDictating(!isDictating)}
+                    className={`btn btn-sm ${isDictating ? 'btn-danger' : 'btn-outline-cyan'}`}
+                  >
+                    {isDictating ? 'Stop Voice Recording' : 'Start Voice Dictation'}
+                  </button>
+                </div>
+              </div>
+
+              {/* Chief Complaints */}
               <div className="form-group">
-                <label className="field-label">Chief Complaints & Presenting Symptoms *</label>
+                <div className="field-label-row">
+                  <label className="field-label">Chief Complaints & Presenting Symptoms *</label>
+                  <span className="snmd-tag">SNOMED CT Mapped</span>
+                </div>
                 <textarea
                   value={newVisit.chiefComplaints}
                   onChange={(e) => setNewVisit({ ...newVisit, chiefComplaints: e.target.value })}
-                  placeholder="e.g. Fever for 3 days, dry cough, retrosternal chest pain..."
+                  placeholder="e.g. High grade fever for 3 days with chills, retrosternal chest discomfort, breathlessness on exertion..."
                   className="form-input form-textarea"
                   rows={2}
                   required
@@ -1049,7 +1364,7 @@ export default function DoctorPortal({
               {/* Vitals in visit */}
               <div className="form-grid-3">
                 <div className="form-group">
-                  <label className="field-label">Blood Pressure</label>
+                  <label className="field-label">Blood Pressure (mmHg)</label>
                   <input
                     type="text"
                     value={newVisit.bp}
@@ -1058,7 +1373,7 @@ export default function DoctorPortal({
                   />
                 </div>
                 <div className="form-group">
-                  <label className="field-label">Pulse Rate</label>
+                  <label className="field-label">Pulse (bpm)</label>
                   <input
                     type="text"
                     value={newVisit.pulse}
@@ -1067,7 +1382,7 @@ export default function DoctorPortal({
                   />
                 </div>
                 <div className="form-group">
-                  <label className="field-label">SpO2 Oxygen</label>
+                  <label className="field-label">SpO2 Oxygen (%)</label>
                   <input
                     type="text"
                     value={newVisit.spo2}
@@ -1077,98 +1392,201 @@ export default function DoctorPortal({
                 </div>
               </div>
 
+              {/* Clinical Examination */}
               <div className="form-group">
-                <label className="field-label">Clinical Examination Findings</label>
+                <label className="field-label">Clinical Examination & Systemic Findings</label>
                 <textarea
                   value={newVisit.clinicalExamination}
                   onChange={(e) => setNewVisit({ ...newVisit, clinicalExamination: e.target.value })}
-                  placeholder="e.g. Chest clear, heart sounds normal, no peripheral edema..."
+                  placeholder="e.g. Bilateral lower zone crackles, clear S1/S2 heart sounds, soft non-tender abdomen..."
                   className="form-input form-textarea"
                   rows={2}
                 />
               </div>
 
+              {/* Diagnosis */}
               <div className="form-group">
-                <label className="field-label">Provisional / Confirmed Diagnosis *</label>
+                <div className="field-label-row">
+                  <label className="field-label">Provisional / Confirmed Diagnosis (ICD-10) *</label>
+                  <span className="snmd-tag">ICD-10 / SNOMED CT</span>
+                </div>
                 <input
                   type="text"
                   value={newVisit.diagnosis}
                   onChange={(e) => setNewVisit({ ...newVisit, diagnosis: e.target.value })}
-                  placeholder="e.g. Acute Viral Bronchitis"
+                  placeholder="e.g. Acute Viral Bronchitis (ICD-10: J20.9)"
                   className="form-input"
                   required
                 />
               </div>
 
-              <div className="form-group">
-                <label className="field-label">Treatment Given in Clinic / Hospital</label>
-                <input
-                  type="text"
-                  value={newVisit.treatmentDetails}
-                  onChange={(e) => setNewVisit({ ...newVisit, treatmentDetails: e.target.value })}
-                  placeholder="e.g. Nebulized with Levosalbutamol, oral hydration..."
-                  className="form-input"
-                />
-              </div>
-
-              {/* Prescriptions rows */}
-              <div className="form-section">
-                <div className="section-header">
-                  <label className="field-label">Itemized Prescriptions</label>
+              {/* SMART E-PRESCRIPTION BUILDER WITH GENERIC SUBSTITUTION (Section 9.2) */}
+              <div className="smart-rx-builder-section">
+                <div className="section-header-flex">
+                  <div>
+                    <h4 className="smart-rx-title">
+                      <Sparkles size={16} className="text-cyan" /> Smart E-Prescription & Generic Alternatives
+                    </h4>
+                    <p className="smart-rx-sub">
+                      Type branded drug to view price comparison and substitute affordable generics with 1 click.
+                    </p>
+                  </div>
                   <button
                     type="button"
                     onClick={handleAddRxRow}
-                    className="text-btn text-cyan text-sm"
+                    className="btn btn-outline-cyan btn-sm"
                   >
-                    + Add Medication
+                    + Add Drug
                   </button>
                 </div>
 
                 {newVisit.prescriptions.map((rx, idx) => (
-                  <div key={idx} className="rx-input-row">
-                    <input
-                      type="text"
-                      value={rx.drug}
-                      onChange={(e) => handleUpdateRxRow(idx, 'drug', e.target.value)}
-                      placeholder="Drug name (e.g. Azithromycin 500mg)"
-                      className="form-input flex-2"
-                    />
-                    <input
-                      type="text"
-                      value={rx.dosage}
-                      onChange={(e) => handleUpdateRxRow(idx, 'dosage', e.target.value)}
-                      placeholder="Dose (1 OD)"
-                      className="form-input flex-1"
-                    />
-                    <input
-                      type="text"
-                      value={rx.duration}
-                      onChange={(e) => handleUpdateRxRow(idx, 'duration', e.target.value)}
-                      placeholder="5 days"
-                      className="form-input flex-1"
-                    />
-                    <input
-                      type="text"
-                      value={rx.instructions}
-                      onChange={(e) => handleUpdateRxRow(idx, 'instructions', e.target.value)}
-                      placeholder="After food"
-                      className="form-input flex-1"
-                    />
-                    {newVisit.prescriptions.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveRxRow(idx)}
-                        className="btn-icon-danger"
-                      >
-                        ×
-                      </button>
+                  <div key={idx} className="rx-builder-card">
+                    <div className="rx-card-top-row">
+                      <div className="form-group flex-2 relative-input">
+                        <label className="field-label">Search Medicine / Drug Name</label>
+                        <input
+                          type="text"
+                          value={rx.drug}
+                          onChange={(e) => {
+                            handleUpdateRxRow(idx, 'drug', e.target.value);
+                            handleDrugSearch(e.target.value, idx);
+                          }}
+                          placeholder="Search e.g. Augmentin, Pan-D, Lipitor, Glycomet, Telma..."
+                          className="form-input"
+                        />
+
+                        {/* Drug Suggestions Dropdown */}
+                        {filteredDrugSuggestions.length > 0 && activeRxRowIndex === idx && (
+                          <div className="drug-suggestions-dropdown">
+                            {filteredDrugSuggestions.map(d => (
+                              <div
+                                key={d.id}
+                                onClick={() => handleSelectDrugSuggestion(d, idx)}
+                                className="drug-suggestion-item"
+                              >
+                                <div className="suggestion-brand">
+                                  <strong>{d.brandName}</strong> ({d.therapeuticCategory})
+                                </div>
+                                <div className="suggestion-generic">
+                                  Generic: {d.genericName}
+                                </div>
+                                <div className="suggestion-savings text-emerald">
+                                  Generic alternative: ₹{d.genericAlternative.price} (Save {d.genericAlternative.savingsPercent}%)
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="form-group flex-1">
+                        <label className="field-label">Frequency</label>
+                        <select
+                          value={rx.frequency}
+                          onChange={(e) => handleUpdateRxRow(idx, 'frequency', e.target.value)}
+                          className="form-select"
+                        >
+                          <option value="1-0-1">1-0-1 (Morning & Night)</option>
+                          <option value="1-0-0">1-0-0 (Morning Only)</option>
+                          <option value="0-0-1">0-0-1 (Night Bedtime)</option>
+                          <option value="1-1-1">1-1-1 (TDS - Thrice Daily)</option>
+                          <option value="SOS">SOS (When needed for emergency)</option>
+                        </select>
+                      </div>
+
+                      <div className="form-group flex-1">
+                        <label className="field-label">Duration</label>
+                        <select
+                          value={rx.duration}
+                          onChange={(e) => handleUpdateRxRow(idx, 'duration', e.target.value)}
+                          className="form-select"
+                        >
+                          <option value="3 days">3 days</option>
+                          <option value="5 days">5 days</option>
+                          <option value="7 days">7 days</option>
+                          <option value="14 days">14 days</option>
+                          <option value="1 month">1 month</option>
+                          <option value="3 months">3 months</option>
+                        </select>
+                      </div>
+
+                      {newVisit.prescriptions.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveRxRow(idx)}
+                          className="btn-icon-danger mt-4"
+                        >
+                          ×
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Generic Alternative Card Prompt */}
+                    {rx.genericEquivalent && (
+                      <div className="generic-substitute-card">
+                        <div className="gen-left">
+                          <span className="badge badge-emerald">Affordable Generic Option Available</span>
+                          <p className="gen-name">{rx.genericEquivalent}</p>
+                          <span className="gen-savings">{rx.genericSavings}</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleSubstituteGeneric(idx)}
+                          className="btn btn-emerald btn-sm"
+                        >
+                          Substitute Generic (1-Click)
+                        </button>
+                      </div>
                     )}
+
+                    <div className="rx-card-bottom-row">
+                      <div className="form-group flex-1">
+                        <label className="field-label">Intake Timing</label>
+                        <select
+                          value={rx.intake}
+                          onChange={(e) => handleUpdateRxRow(idx, 'intake', e.target.value)}
+                          className="form-select"
+                        >
+                          <option value="Post-meal">Post-meal (After food)</option>
+                          <option value="Pre-meal">Pre-meal (30 mins before food)</option>
+                          <option value="With meal">With meal / Food</option>
+                          <option value="Empty stomach">Early morning empty stomach</option>
+                        </select>
+                      </div>
+
+                      <div className="form-group flex-1">
+                        <label className="field-label">Route</label>
+                        <select
+                          value={rx.route}
+                          onChange={(e) => handleUpdateRxRow(idx, 'route', e.target.value)}
+                          className="form-select"
+                        >
+                          <option value="Oral">Oral (Tablet / Syrup)</option>
+                          <option value="Inhalation">Inhalation (Metered Dose Inhaler)</option>
+                          <option value="Topical">Topical / Ointment</option>
+                          <option value="IV / IM">Intravenous / Intramuscular</option>
+                        </select>
+                      </div>
+
+                      <div className="form-group flex-2">
+                        <label className="field-label">Special Advisory Notes</label>
+                        <input
+                          type="text"
+                          value={rx.instructions}
+                          onChange={(e) => handleUpdateRxRow(idx, 'instructions', e.target.value)}
+                          placeholder="e.g. Take with warm water, avoid milk products..."
+                          className="form-input"
+                        />
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>
 
+              {/* Follow-up advice */}
               <div className="form-group">
-                <label className="field-label">Follow-up Advice</label>
+                <label className="field-label">Follow-up Advice & Emergency Precautions</label>
                 <input
                   type="text"
                   value={newVisit.followUpAdvice}
@@ -1180,7 +1598,145 @@ export default function DoctorPortal({
               <div className="modal-actions">
                 <button type="button" onClick={() => setShowAddVisitModal(false)} className="btn btn-ghost">Cancel</button>
                 <button type="submit" className="btn btn-emerald btn-large">
-                  <CheckCircle size={16} /> Save Visit & Sync Nationally
+                  <CheckCircle size={16} /> Save Visit & Broadcast Nationally
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: ORDER DIAGNOSTIC TEST (Section 9.3) */}
+      {showOrderTestModal && (
+        <div className="modal-overlay">
+          <div className="modal-card">
+            <div className="modal-header">
+              <div className="modal-header-icon">
+                <DollarSign size={24} className="text-emerald" />
+              </div>
+              <div>
+                <h3 className="modal-title">Order Diagnostic Test & Review Local Pricing</h3>
+                <p className="modal-subtitle">
+                  LOINC Standardized Pathology & Radiology Catalog • Empaneled Lab Price Comparison
+                </p>
+              </div>
+              <button type="button" onClick={() => setShowOrderTestModal(false)} className="modal-close-btn">×</button>
+            </div>
+
+            <form onSubmit={handleOrderDiagnosticTest} className="modal-form">
+              <div className="form-group">
+                <label className="field-label">Select Standardized Diagnostic Investigation</label>
+                <select
+                  value={selectedTestToOrder.id}
+                  onChange={(e) => {
+                    const t = DIAGNOSTIC_TEST_CATALOG.find(item => item.id === e.target.value);
+                    if (t) setSelectedTestToOrder(t);
+                  }}
+                  className="form-select"
+                >
+                  {DIAGNOSTIC_TEST_CATALOG.map(t => (
+                    <option key={t.id} value={t.id}>
+                      {t.testName} ({t.code})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label className="field-label">Completion Timeline & Urgency Flag *</label>
+                <select
+                  value={testOrderUrgency}
+                  onChange={(e) => setTestOrderUrgency(e.target.value)}
+                  className="form-select"
+                >
+                  <option value="Fasting, tomorrow morning">Fasting, tomorrow morning</option>
+                  <option value="Within 24 hours">Within 24 hours</option>
+                  <option value="Stat Emergency">Stat Emergency (Immediate Priority)</option>
+                  <option value="Before next visit in 5 days">Before next follow-up visit</option>
+                </select>
+              </div>
+
+              {/* Local Price Range Display */}
+              <div className="local-pricing-preview-box">
+                <div className="pricing-box-head">
+                  <div>
+                    <h5 className="pricing-title">Local Area Out-of-Pocket Cost Guidance</h5>
+                    <span className="pricing-sub text-muted">Estimated price across empaneled labs in patient's district:</span>
+                  </div>
+                  <strong className="text-emerald font-large">₹{selectedTestToOrder.minPrice} - ₹{selectedTestToOrder.maxPrice}</strong>
+                </div>
+
+                <div className="labs-strip">
+                  {selectedTestToOrder.hyperlocalPricing.map((lab, i) => (
+                    <div key={i} className="lab-price-pill">
+                      <span>{lab.labName}</span>
+                      <strong>₹{lab.price}</strong>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="modal-actions">
+                <button type="button" onClick={() => setShowOrderTestModal(false)} className="btn btn-ghost">Cancel</button>
+                <button type="submit" className="btn btn-primary btn-large">
+                  <CheckCircle size={16} /> Place Test Order on Patient Record
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: BREAK-GLASS EMERGENCY OVERRIDE (FR-05, DPDP Act 2023) */}
+      {showBreakGlassModal && (
+        <div className="modal-overlay">
+          <div className="modal-card small-modal">
+            <div className="modal-header">
+              <div className="modal-header-icon bg-danger-icon">
+                <Flame size={24} className="text-white" />
+              </div>
+              <div>
+                <h3 className="modal-title text-rose">"Break-Glass" Emergency Override Protocol</h3>
+                <p className="modal-subtitle">Bypass Standard OTP Consent for Unconscious / Critical Patients</p>
+              </div>
+              <button type="button" onClick={() => setShowBreakGlassModal(false)} className="modal-close-btn">×</button>
+            </div>
+
+            <form onSubmit={handleBreakGlassSubmit} className="modal-form">
+              <div className="alert-box alert-error">
+                <ShieldAlert size={18} />
+                <span>
+                  <strong>LEGAL NOTICE (DPDP Act 2023):</strong> Break-glass access provides immediate read permissions to allergies and medical history. An immutable audit record will be logged and preserved for 7 years. Immediate SMS alerts will be transmitted to the patient and registered emergency contact.
+                </span>
+              </div>
+
+              <div className="form-group">
+                <label className="field-label">Mandatory Clinical Emergency Justification *</label>
+                <textarea
+                  value={breakGlassJustification}
+                  onChange={(e) => setBreakGlassJustification(e.target.value)}
+                  placeholder="e.g. Patient brought in comatose / severe shock. Patient unable to verify OTP. Immediate review of drug allergies and ongoing medication required to prevent fatal medical error."
+                  className="form-input form-textarea"
+                  rows={4}
+                  required
+                />
+              </div>
+
+              <div className="break-glass-meta-info">
+                <div>
+                  <span className="text-muted">Physician In-Charge:</span>
+                  <strong>{currentDoctor.name} ({currentDoctor.regNumber})</strong>
+                </div>
+                <div>
+                  <span className="text-muted">Emergency Contact to Notify:</span>
+                  <strong>{patient.emergencyContact?.name} ({patient.emergencyContact?.phone})</strong>
+                </div>
+              </div>
+
+              <div className="modal-actions">
+                <button type="button" onClick={() => setShowBreakGlassModal(false)} className="btn btn-ghost">Cancel</button>
+                <button type="submit" className="btn btn-danger btn-large">
+                  <Flame size={16} /> Confirm & Execute Break-Glass Protocol
                 </button>
               </div>
             </form>
@@ -1524,4 +2080,3 @@ export default function DoctorPortal({
     </div>
   );
 }
-

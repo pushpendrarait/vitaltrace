@@ -52,3 +52,4 @@ export const formatCurrencyINR = (amount) => {
     maximumFractionDigits: 0
   }).format(amount);
 };
+

@@ -325,3 +325,4 @@ export default function ReportViewerModal({ report, patient, onClose }) {
     </div>
   );
 }
+

@@ -744,3 +744,4 @@ export default function RegistrationModal({ isOpen, onClose, onRegister, existin
     </div>
   );
 }
+

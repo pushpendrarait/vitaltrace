@@ -2105,3 +2105,1405 @@ body {
     grid-template-columns: 1fr;
   }
 }
+
+/* --- NEW FEATURES: ROLE LOGIN, DOCTOR WORKSPACE, PDF/IMAGE REPORTS & OBSERVATION ROUNDS --- */
+
+/* Role Pills in Navbar */
+.role-status-badge-wrap {
+  display: flex;
+  align-items: center;
+}
+
+.active-role-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.35rem 0.85rem;
+  border-radius: var(--radius-md);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.role-pill-doctor {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.35);
+}
+
+.role-pill-patient {
+  background: rgba(6, 182, 212, 0.15);
+  color: #38bdf8;
+  border: 1px solid rgba(6, 182, 212, 0.35);
+}
+
+/* Login Modal */
+.login-modal-card {
+  max-width: 540px;
+}
+
+.login-role-tabs {
+  display: flex;
+  border-bottom: 2px solid var(--border-color);
+  padding: 0 1.5rem;
+  gap: 0.5rem;
+}
+
+.role-tab-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.85rem 1rem;
+  background: transparent;
+  border: none;
+  border-bottom: 3px solid transparent;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.role-tab-active-patient {
+  color: var(--cyan);
+  border-bottom-color: var(--cyan);
+  background: rgba(6, 182, 212, 0.08);
+}
+
+.role-tab-active-doctor {
+  color: var(--emerald);
+  border-bottom-color: var(--emerald);
+  background: rgba(16, 185, 129, 0.08);
+}
+
+.login-form {
+  padding: 1.5rem;
+}
+
+.login-select {
+  font-size: 0.92rem;
+  padding: 0.75rem;
+}
+
+.login-actions {
+  margin-top: 1rem;
+}
+
+.register-prompt-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid var(--border-color);
+  padding-top: 1rem;
+  margin-top: 1rem;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.custom-doctor-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  background: #0d1726;
+  border: 1px solid #1e293b;
+  border-radius: var(--radius-md);
+  padding: 1rem;
+}
+
+.text-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  text-align: left;
+  padding: 0;
+}
+.text-btn:hover {
+  text-decoration: underline;
+}
+
+/* DOCTOR WORKSPACE STYLES */
+.doctor-portal-main {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.doctor-header-card {
+  background: linear-gradient(135deg, #091b2c 0%, #11283e 100%);
+  border: 1px solid #1d4062;
+  border-radius: var(--radius-xl);
+  padding: 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1.25rem;
+  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.35);
+}
+
+.doctor-profile-top {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.doctor-avatar-circle {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #059669, #10b981);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.4);
+}
+
+.doc-name-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.doctor-name {
+  font-size: 1.45rem;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.doctor-creds {
+  font-size: 0.88rem;
+  color: #cbd5e1;
+  margin: 0.25rem 0;
+}
+
+.hospital-affiliation-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.82rem;
+  color: #94a3b8;
+}
+
+.patient-selector-strip {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.patient-search-form {
+  display: flex;
+  gap: 0.75rem;
+  position: relative;
+  align-items: center;
+}
+
+.patient-search-input {
+  flex: 1;
+  background: #0f172a;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 0.75rem 1rem 0.75rem 2.6rem;
+  color: white;
+  font-size: 0.95rem;
+  outline: none;
+}
+.patient-search-input:focus {
+  border-color: var(--cyan);
+}
+
+.patient-quick-pills {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.patient-clinical-banner {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.patient-banner-left {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.patient-blood-avatar {
+  width: 52px;
+  height: 52px;
+  border-radius: var(--radius-md);
+  background: #be123c;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  font-weight: 800;
+  box-shadow: 0 4px 12px rgba(190, 18, 60, 0.35);
+}
+
+.banner-name-line {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  margin-bottom: 0.25rem;
+  flex-wrap: wrap;
+}
+
+.patient-display-name {
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.banner-meta-line {
+  display: flex;
+  gap: 0.65rem;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  flex-wrap: wrap;
+}
+
+.inpatient-active-badge-box {
+  background: rgba(244, 63, 94, 0.1);
+  border: 1px solid rgba(244, 63, 94, 0.35);
+  border-radius: var(--radius-md);
+  padding: 0.5rem 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.bed-label {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+.admitted-date-tag {
+  font-size: 0.72rem;
+  color: #fda4af;
+}
+
+.critical-allergies-alert-strip {
+  background: linear-gradient(135deg, #4c0519, #2b0b14);
+  border: 1px solid #e11d48;
+  border-radius: var(--radius-md);
+  padding: 0.85rem 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  color: #ffe4e6;
+}
+
+.alert-strip-text {
+  font-size: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.allergens-tags-row {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.allergen-pill {
+  background: rgba(225, 29, 72, 0.4);
+  border: 1px solid #f43f5e;
+  padding: 0.2rem 0.6rem;
+  border-radius: 4px;
+  font-weight: 700;
+  font-size: 0.82rem;
+}
+
+/* Doctor Tabs */
+.doctor-nav-tabs {
+  display: flex;
+  gap: 0.5rem;
+  border-bottom: 2px solid var(--border-color);
+  overflow-x: auto;
+  padding-bottom: 0.25rem;
+}
+
+.doc-tab-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.8rem 1.25rem;
+  background: transparent;
+  border: none;
+  border-bottom: 3px solid transparent;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.doc-tab-btn:hover {
+  color: var(--text-main);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.doc-tab-active {
+  color: var(--emerald);
+  border-bottom-color: var(--emerald);
+  background: rgba(16, 185, 129, 0.07);
+}
+
+.doc-tab-count {
+  background: rgba(255, 255, 255, 0.1);
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+}
+
+.doc-tab-pulse {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #f43f5e;
+  animation: pulse-alert 1.5s infinite;
+}
+
+.doc-tab-content {
+  animation: fade-in 0.25s ease;
+}
+
+.section-action-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1.25rem;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.category-filter-strip {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+  flex-wrap: wrap;
+}
+
+.filter-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-dim);
+  text-transform: uppercase;
+}
+
+.filter-btn {
+  background: #0f172a;
+  color: var(--text-muted);
+  border: 1px solid var(--border-color);
+  padding: 0.35rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.filter-btn:hover {
+  border-color: var(--cyan);
+  color: var(--text-main);
+}
+
+.filter-btn-active {
+  background: var(--cyan);
+  color: #08111e;
+  font-weight: 700;
+  border-color: var(--cyan);
+}
+
+/* Reports Gallery Grid */
+.reports-gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: 1.25rem;
+}
+
+.report-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.report-card:hover {
+  border-color: var(--cyan);
+  transform: translateY(-2px);
+}
+
+.report-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.format-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 0.2rem 0.55rem;
+  border-radius: 4px;
+}
+
+.bg-pdf {
+  background: rgba(244, 63, 94, 0.15);
+  color: #fb7185;
+  border: 1px solid rgba(244, 63, 94, 0.35);
+}
+
+.bg-img {
+  background: rgba(6, 182, 212, 0.15);
+  color: #38bdf8;
+  border: 1px solid rgba(6, 182, 212, 0.35);
+}
+
+.report-date-tag {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.report-title {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #ffffff;
+  line-height: 1.3;
+}
+
+.report-dept-badge {
+  font-size: 0.72rem;
+  color: #94a3b8;
+  font-weight: 600;
+}
+
+.report-lab-info {
+  background: #0f172a;
+  border-radius: var(--radius-sm);
+  padding: 0.65rem 0.85rem;
+  font-size: 0.78rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.lab-name {
+  color: #ffffff;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.lab-addr {
+  color: var(--text-dim);
+}
+.ordering-doc {
+  color: #cbd5e1;
+  margin-top: 0.2rem;
+}
+
+.report-findings-preview {
+  font-size: 0.82rem;
+  color: #cbd5e1;
+}
+
+.findings-label {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  margin-bottom: 0.2rem;
+}
+
+.findings-snippet {
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Past Doctor Visits Timeline */
+.doctor-visits-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.visit-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 1.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.visit-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.doctor-badge-group {
+  display: flex;
+  gap: 0.85rem;
+  align-items: center;
+}
+
+.doc-avatar-sm {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, #059669, #10b981);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.treating-doctor-name {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.treating-doctor-creds {
+  font-size: 0.8rem;
+  color: #cbd5e1;
+}
+
+.visit-date-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #38bdf8;
+  background: rgba(6, 182, 212, 0.1);
+  padding: 0.25rem 0.6rem;
+  border-radius: 4px;
+}
+
+.hospital-facility-banner {
+  background: #0d1828;
+  border-radius: var(--radius-sm);
+  padding: 0.65rem 0.85rem;
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  font-size: 0.82rem;
+  color: #e2e8f0;
+}
+
+.facility-address {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+
+.visit-vitals-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 0.5rem;
+  background: #0f172a;
+  padding: 0.75rem;
+  border-radius: var(--radius-md);
+}
+
+.vital-item {
+  display: flex;
+  flex-direction: column;
+}
+.vital-lbl {
+  font-size: 0.7rem;
+  color: var(--text-dim);
+}
+.vital-val {
+  font-size: 0.92rem;
+  color: #ffffff;
+}
+
+.clinical-findings-box {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  font-size: 0.85rem;
+}
+
+.findings-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.findings-heading {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.highlight-diag {
+  background: rgba(244, 63, 94, 0.08);
+  border-left: 3px solid var(--rose);
+  padding: 0.5rem 0.75rem;
+  border-radius: 0 4px 4px 0;
+}
+
+.visit-prescriptions-section {
+  background: #0c1424;
+  border-radius: var(--radius-md);
+  padding: 0.85rem;
+}
+
+.rx-heading {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #38bdf8;
+  margin-bottom: 0.5rem;
+}
+
+.rx-table-wrap {
+  overflow-x: auto;
+}
+
+.rx-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+  text-align: left;
+}
+.rx-table th {
+  padding: 0.45rem 0.6rem;
+  color: var(--text-dim);
+  border-bottom: 1px solid #1e293b;
+}
+.rx-table td {
+  padding: 0.55rem 0.6rem;
+  color: #e2e8f0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.visit-advice-footer {
+  font-size: 0.82rem;
+  color: #cbd5e1;
+  border-top: 1px solid var(--border-color);
+  padding-top: 0.6rem;
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* Inpatient Admission & Daily Observation */
+.active-inpatient-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.admission-status-banner {
+  background: linear-gradient(135deg, #1e1320, #141f30);
+  border: 1px solid #4a1e2f;
+  border-radius: var(--radius-lg);
+  padding: 1.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.status-banner-head {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.ward-icon-wrap {
+  width: 52px;
+  height: 52px;
+  border-radius: var(--radius-md);
+  background: rgba(244, 63, 94, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.banner-title-flex {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.ward-title {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.hospital-tag-line {
+  font-size: 0.82rem;
+  color: #cbd5e1;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.admission-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.75rem;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 0.85rem;
+  border-radius: var(--radius-md);
+}
+
+.adm-meta-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+.cell-lbl {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.daily-rounds-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 0.5rem;
+}
+.subhead-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.daily-rounds-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.round-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.round-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.round-title-group {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.day-badge {
+  background: var(--cyan);
+  color: #08111e;
+  font-size: 0.75rem;
+  font-weight: 800;
+  padding: 0.2rem 0.55rem;
+  border-radius: 4px;
+}
+
+.round-time {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.round-shift-tag {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+
+.round-attending-doc {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.82rem;
+  color: #cbd5e1;
+}
+
+.daily-vitals-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(105px, 1fr));
+  gap: 0.5rem;
+  background: #0f172a;
+  padding: 0.75rem;
+  border-radius: var(--radius-md);
+}
+
+.daily-vital-box {
+  display: flex;
+  flex-direction: column;
+}
+.dv-label {
+  font-size: 0.68rem;
+  color: var(--text-dim);
+}
+.dv-val {
+  font-size: 0.9rem;
+  color: #ffffff;
+}
+
+.round-notes-box {
+  background: #0c1524;
+  border-radius: var(--radius-sm);
+  padding: 0.75rem 0.85rem;
+}
+.note-heading {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--cyan);
+  display: block;
+  margin-bottom: 0.2rem;
+}
+.note-body {
+  font-size: 0.85rem;
+  color: #e2e8f0;
+  line-height: 1.45;
+}
+
+.round-treatments-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.75rem;
+  font-size: 0.8rem;
+}
+
+.round-treatment-item {
+  background: #0f172a;
+  padding: 0.65rem 0.85rem;
+  border-radius: var(--radius-sm);
+}
+
+.rt-label {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--text-dim);
+  margin-bottom: 0.2rem;
+}
+
+/* Rx input rows in visit modal */
+.rx-input-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.btn-icon-danger {
+  background: rgba(244, 63, 94, 0.15);
+  color: #fb7185;
+  border: 1px solid rgba(244, 63, 94, 0.3);
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 1.2rem;
+}
+
+/* REPORT VIEWER MODAL STYLES */
+.report-viewer-modal {
+  max-width: 960px;
+  width: 95vw;
+  height: 92vh;
+}
+
+.report-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--border-color);
+  gap: 1rem;
+}
+
+.report-header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.format-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.65rem;
+  border-radius: 6px;
+  font-weight: 800;
+  font-size: 0.8rem;
+}
+
+.tag-pdf {
+  background: #be123c;
+  color: white;
+}
+
+.tag-img {
+  background: #0284c7;
+  color: white;
+}
+
+.report-modal-title {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.report-modal-meta {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.report-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.report-viewer-body {
+  flex: 1;
+  overflow-y: auto;
+  background: #080c16;
+  padding: 1.5rem;
+  display: flex;
+  justify-content: center;
+}
+
+/* PDF Document Sheet Representation */
+.pdf-document-container {
+  max-width: 820px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.pdf-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #111a2e;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.8rem;
+}
+
+.pdf-sheet {
+  background: #ffffff;
+  color: #0f172a;
+  border-radius: 4px;
+  padding: 2.5rem;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  line-height: 1.5;
+}
+
+.pdf-lab-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  border-bottom: 2px solid #0284c7;
+  padding-bottom: 1rem;
+  margin-bottom: 1rem;
+}
+
+.pdf-lab-brand {
+  display: flex;
+  gap: 0.85rem;
+}
+
+.pdf-lab-logo {
+  width: 44px;
+  height: 44px;
+  background: #e0f2fe;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pdf-lab-name {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #0369a1;
+}
+
+.pdf-lab-address {
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.nabl-tag {
+  display: inline-block;
+  font-size: 0.65rem;
+  font-weight: 800;
+  color: #047857;
+  background: #d1fae5;
+  padding: 0.15rem 0.45rem;
+  border-radius: 3px;
+  margin-top: 0.25rem;
+}
+
+.pdf-report-barcode {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+.barcode-font {
+  font-family: monospace;
+  font-size: 1.1rem;
+  letter-spacing: 2px;
+}
+.barcode-num {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #64748b;
+}
+
+.pdf-patient-table {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.6rem 1rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1.25rem;
+  font-size: 0.8rem;
+}
+
+.pdf-cell {
+  display: flex;
+  flex-direction: column;
+}
+.pdf-lbl {
+  font-size: 0.7rem;
+  color: #64748b;
+}
+
+.pdf-section-title {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #0f172a;
+  border-bottom: 1px solid #cbd5e1;
+  padding-bottom: 0.35rem;
+  margin-bottom: 0.75rem;
+}
+
+.pdf-results-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+  margin-bottom: 1.25rem;
+}
+.pdf-results-table th {
+  background: #f1f5f9;
+  color: #334155;
+  font-weight: 700;
+  text-align: left;
+  padding: 0.55rem;
+  border-bottom: 2px solid #cbd5e1;
+}
+.pdf-results-table td {
+  padding: 0.6rem 0.55rem;
+  border-bottom: 1px solid #e2e8f0;
+  color: #1e293b;
+}
+
+.row-abnormal td {
+  background: #fff1f2;
+}
+
+.pdf-flag-badge {
+  background: #be123c;
+  color: white;
+  font-size: 0.68rem;
+  font-weight: 800;
+  padding: 0.15rem 0.45rem;
+  border-radius: 3px;
+}
+
+.pdf-impression-box {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 4px;
+  padding: 0.85rem;
+  margin-bottom: 1.5rem;
+}
+.pdf-impression-box h6 {
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: #166534;
+  margin-bottom: 0.35rem;
+}
+.pdf-impression-box p {
+  font-size: 0.85rem;
+  color: #14532d;
+  line-height: 1.4;
+}
+
+.pdf-footer-signatures {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  border-top: 1px solid #cbd5e1;
+  padding-top: 1rem;
+  font-size: 0.8rem;
+}
+
+.sig-line {
+  font-size: 0.7rem;
+  color: #059669;
+  font-weight: 700;
+  display: block;
+}
+.sig-sub {
+  font-size: 0.7rem;
+  color: #64748b;
+}
+
+.qr-stamp-box {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.7rem;
+  color: #64748b;
+}
+
+/* Image Diagnostic Lightbox */
+.image-viewer-container {
+  width: 100%;
+  max-width: 820px;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.image-controls-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #111a2e;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-sm);
+}
+
+.zoom-buttons {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.zoom-text {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #ffffff;
+  min-width: 44px;
+  text-align: center;
+}
+
+.imaging-canvas-wrap {
+  background: #000000;
+  border: 2px solid #1e293b;
+  border-radius: var(--radius-md);
+  height: 480px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.diagnostic-image-canvas {
+  transition: transform 0.2s ease;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.inverted-canvas {
+  filter: invert(1);
+}
+
+/* ECG Wave View */
+.ecg-view-box {
+  width: 100%;
+  height: 100%;
+  background: #0a140f;
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.ecg-grid-overlay {
+  width: 100%;
+  height: 100%;
+  background-image: 
+    linear-gradient(rgba(16, 185, 129, 0.1) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(16, 185, 129, 0.1) 1px, transparent 1px);
+  background-size: 20px 20px;
+  display: flex;
+  align-items: center;
+}
+
+.ecg-wave-svg {
+  width: 100%;
+  height: 220px;
+}
+
+.ecg-hud-overlay {
+  position: absolute;
+  top: 1rem;
+  left: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-family: monospace;
+  font-size: 0.8rem;
+  color: #34d399;
+}
+
+/* Radiology / X-Ray Simulation View */
+.xray-view-box {
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle, #2a2d34 0%, #050505 85%);
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.xray-screen {
+  width: 380px;
+  height: 400px;
+  position: relative;
+  opacity: 0.9;
+}
+
+.xray-ribs-shadow {
+  width: 100%;
+  height: 100%;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(255, 255, 255, 0.08) 0px,
+    rgba(255, 255, 255, 0.08) 18px,
+    transparent 18px,
+    transparent 36px
+  );
+  border-radius: 120px 120px 60px 60px;
+}
+
+.xray-lung-infiltrates {
+  position: absolute;
+  bottom: 80px;
+  left: 50px;
+  right: 50px;
+  height: 100px;
+  background: radial-gradient(ellipse at center, rgba(255, 255, 255, 0.45) 0%, transparent 70%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.radiology-marker {
+  font-size: 0.65rem;
+  color: #f87171;
+  background: rgba(0, 0, 0, 0.6);
+  padding: 0.15rem 0.4rem;
+  border-radius: 3px;
+  font-family: monospace;
+}
+
+.xray-cardiac-silhouette {
+  position: absolute;
+  bottom: 70px;
+  left: 120px;
+  width: 130px;
+  height: 140px;
+  background: rgba(255, 255, 255, 0.35);
+  border-radius: 40px 100px 80px 40px;
+  filter: blur(12px);
+}
+
+.radiology-corner-tags {
+  position: absolute;
+  inset: 1rem;
+  pointer-events: none;
+  font-size: 0.72rem;
+  color: #94a3b8;
+}
+
+.corner-top-left { position: absolute; top: 0; left: 0; }
+.corner-top-right { position: absolute; top: 0; right: 0; }
+.corner-bottom-left { position: absolute; bottom: 0; left: 0; }
+.corner-bottom-right { position: absolute; bottom: 0; right: 0; }
+
+.imaging-report-drawer {
+  background: #111a2e;
+  border-radius: var(--radius-md);
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.drawer-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.radiology-findings-text {
+  font-size: 0.85rem;
+  color: #cbd5e1;
+  line-height: 1.45;
+}

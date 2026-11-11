@@ -2,13 +2,15 @@ import React, { useState } from 'react';
 import { 
   ShieldCheck, AlertTriangle, Building, CreditCard, Users, HeartPulse, 
   FileCheck, Download, Plus, CheckCircle, ExternalLink, Phone, Calendar, 
-  Info, QrCode, Stethoscope, AlertCircle, Trash2, ArrowRight 
+  Info, QrCode, Stethoscope, AlertCircle, Trash2, ArrowRight, FileText, 
+  Image, Bed, Clock 
 } from 'lucide-react';
 import { 
   formatCurrencyINR, maskAadhaar, calculateAge, 
   formatAadhaar, isValidAadhaar 
 } from '../utils/helpers';
 import { POPULAR_GOVT_SCHEMES, POPULAR_INSURERS, COMMON_TPAS } from '../data/initialData';
+import ReportViewerModal from './ReportViewerModal';
 
 export default function ProfileView({ 
   profile, 
@@ -23,6 +25,7 @@ export default function ProfileView({
   const [showCashlessPreAuthModal, setShowCashlessPreAuthModal] = useState(false);
   const [selectedSchemeForPreAuth, setSelectedSchemeForPreAuth] = useState(null);
   const [preAuthSuccessData, setPreAuthSuccessData] = useState(null);
+  const [selectedReportForPatientView, setSelectedReportForPatientView] = useState(null);
 
   // New Scheme Form State
   const [newScheme, setNewScheme] = useState({
@@ -377,6 +380,15 @@ export default function ProfileView({
           <HeartPulse size={16} />
           <span>Interoperable Medical Ledger & Allergies</span>
           {profile.allergies?.length > 0 && <span className="tab-counter badge-rose-pill">{profile.allergies.length} Alert</span>}
+        </button>
+
+        <button
+          className={`tab-btn ${activeTab === 'reports' ? 'tab-btn-active' : ''}`}
+          onClick={() => setActiveTab('reports')}
+        >
+          <FileText size={16} />
+          <span>My Diagnostic Reports & Doctor Visits</span>
+          <span className="tab-counter">{(profile.diagnosticReports?.length || 0) + (profile.doctorVisits?.length || 0)}</span>
         </button>
       </div>
 
@@ -795,6 +807,224 @@ export default function ProfileView({
               )}
             </div>
           </div>
+        </section>
+      )}
+
+      {/* Tab 5: Diagnostic Reports & Past Consultations (Patient View) */}
+      {activeTab === 'reports' && (
+        <section className="tab-panel">
+          <div className="panel-title-row">
+            <div>
+              <h3 className="panel-title">My Diagnostic Reports & Doctor Consultations</h3>
+              <p className="panel-subtitle">
+                Access all laboratory tests, imaging reports in PDF and Image formats, treating doctor details, prescriptions, and daily observation notes.
+              </p>
+            </div>
+          </div>
+
+          {/* Diagnostic Reports Gallery */}
+          <div className="clinical-section">
+            <div className="clinical-section-header">
+              <FileText size={18} className="text-cyan" />
+              <h4>📄 Laboratory & Diagnostic Imaging Reports (PDF & Images)</h4>
+            </div>
+
+            <div className="reports-gallery-grid">
+              {profile.diagnosticReports && profile.diagnosticReports.length > 0 ? (
+                profile.diagnosticReports.map((rep) => (
+                  <div key={rep.id} className="report-card">
+                    <div className="report-card-top">
+                      <span className={`format-indicator ${rep.format === 'PDF' ? 'bg-pdf' : 'bg-img'}`}>
+                        {rep.format === 'PDF' ? <FileText size={14} /> : <Image size={14} />}
+                        {rep.format} Document
+                      </span>
+                      <span className="report-date-tag">{rep.date}</span>
+                    </div>
+
+                    <h4 className="report-title">{rep.title}</h4>
+                    <span className="report-dept-badge">{rep.category}</span>
+
+                    <div className="report-lab-info">
+                      <p className="lab-name">
+                        <Building size={13} className="text-cyan" /> {rep.labName}
+                      </p>
+                      <p className="lab-addr">{rep.labAddress}</p>
+                      <p className="ordering-doc">Ordered by: <strong>{rep.orderingDoctor}</strong></p>
+                    </div>
+
+                    <div className="report-findings-preview">
+                      <span className="findings-label">Findings Summary:</span>
+                      <p className="findings-snippet">{rep.findings}</p>
+                    </div>
+
+                    <div className="report-card-footer">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedReportForPatientView(rep)}
+                        className="btn btn-primary full-width"
+                      >
+                        {rep.format === 'PDF' ? <FileText size={15} /> : <Image size={15} />}
+                        <span>Open {rep.format} Report Viewer</span>
+                      </button>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="empty-state-box full-width">
+                  <p>No diagnostic reports on record.</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Past Doctor Consultations */}
+          <div className="clinical-section">
+            <div className="clinical-section-header">
+              <Stethoscope size={18} className="text-emerald" />
+              <h4>👨‍⚕️ Past Doctor Consultations & Prescriptions</h4>
+            </div>
+
+            <div className="doctor-visits-timeline">
+              {profile.doctorVisits && profile.doctorVisits.length > 0 ? (
+                profile.doctorVisits.map((vis) => (
+                  <div key={vis.id} className="visit-card">
+                    <div className="visit-header">
+                      <div className="doctor-badge-group">
+                        <div className="doc-avatar-sm">
+                          <Stethoscope size={18} className="text-white" />
+                        </div>
+                        <div>
+                          <h4 className="treating-doctor-name">{vis.doctorName}</h4>
+                          <p className="treating-doctor-creds">
+                            {vis.doctorQualification} • <span className="font-mono text-cyan">Reg: {vis.doctorRegNo}</span>
+                          </p>
+                          <span className="badge badge-purple">{vis.specialty}</span>
+                        </div>
+                      </div>
+                      <div className="visit-meta-tag">
+                        <span className="visit-date-badge"><Calendar size={13} /> {vis.visitDate}</span>
+                      </div>
+                    </div>
+
+                    <div className="hospital-facility-banner">
+                      <Building size={15} className="text-cyan flex-shrink-0" />
+                      <div>
+                        <strong>{vis.hospitalName}</strong>
+                        <p className="facility-address">{vis.hospitalAddress}</p>
+                      </div>
+                    </div>
+
+                    <div className="clinical-findings-box">
+                      <div className="findings-row">
+                        <span className="findings-heading">Presenting Complaints:</span>
+                        <p>{vis.chiefComplaints}</p>
+                      </div>
+                      <div className="findings-row highlight-diag">
+                        <span className="findings-heading">Diagnosis:</span>
+                        <strong className="text-rose font-large">{vis.diagnosis}</strong>
+                      </div>
+                      <div className="findings-row">
+                        <span className="findings-heading">Treatment Details:</span>
+                        <p>{vis.treatmentDetails}</p>
+                      </div>
+                    </div>
+
+                    {vis.prescriptions && vis.prescriptions.length > 0 && (
+                      <div className="visit-prescriptions-section">
+                        <h5 className="rx-heading">Prescriptions</h5>
+                        <div className="rx-table-wrap">
+                          <table className="rx-table">
+                            <thead>
+                              <tr>
+                                <th>Medicine</th>
+                                <th>Dosage</th>
+                                <th>Duration</th>
+                                <th>Instructions</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {vis.prescriptions.map((rx, idx) => (
+                                <tr key={idx}>
+                                  <td><strong>{rx.drug}</strong></td>
+                                  <td>{rx.dosage}</td>
+                                  <td>{rx.duration}</td>
+                                  <td>{rx.instructions}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))
+              ) : (
+                <div className="empty-state-box full-width">
+                  <p>No past doctor consultations recorded.</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Inpatient Observation Records */}
+          {profile.hospitalizations && profile.hospitalizations.length > 0 && (
+            <div className="clinical-section">
+              <div className="clinical-section-header">
+                <Bed size={18} className="text-rose" />
+                <h4>🏥 Inpatient Observation Logs & Daily Doctor Rounds</h4>
+              </div>
+
+              {profile.hospitalizations.map((hosp) => (
+                <div key={hosp.id} className="active-inpatient-container mb-3">
+                  <div className="admission-status-banner">
+                    <div className="status-banner-head">
+                      <div className="ward-icon-wrap">
+                        <Bed size={22} className="text-rose" />
+                      </div>
+                      <div>
+                        <h4 className="ward-title">{hosp.wardBed}</h4>
+                        <p className="hospital-tag-line">
+                          {hosp.admittingHospital} — {hosp.hospitalAddress}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="admission-meta-grid">
+                      <div className="adm-meta-cell">
+                        <span className="cell-lbl">Admission:</span>
+                        <strong>{hosp.admissionDate}</strong>
+                      </div>
+                      <div className="adm-meta-cell">
+                        <span className="cell-lbl">Attending:</span>
+                        <strong>{hosp.attendingDoctor}</strong>
+                      </div>
+                      <div className="adm-meta-cell">
+                        <span className="cell-lbl">Diagnosis:</span>
+                        <strong className="text-rose">{hosp.admissionDiagnosis}</strong>
+                      </div>
+                    </div>
+                  </div>
+
+                  {hosp.dailyObservationLogs && hosp.dailyObservationLogs.length > 0 && (
+                    <div className="daily-rounds-list mt-2">
+                      {hosp.dailyObservationLogs.map((log) => (
+                        <div key={log.logId} className="round-card">
+                          <div className="round-card-top">
+                            <span className="day-badge">Day {log.dayNumber}</span>
+                            <strong className="round-time">{log.roundTime}</strong>
+                            <span className="badge badge-emerald">Status: {log.clinicalStatus}</span>
+                          </div>
+                          <p className="text-muted text-sm mt-1">Doctor: {log.attendingDoctor}</p>
+                          <div className="round-notes-box mt-2">
+                            <p className="note-body">{log.progressNotes}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </section>
       )}
 
@@ -1290,6 +1520,15 @@ export default function ProfileView({
             )}
           </div>
         </div>
+      )}
+
+      {/* REPORT VIEWER MODAL FOR PATIENT */}
+      {selectedReportForPatientView && (
+        <ReportViewerModal
+          report={selectedReportForPatientView}
+          patient={profile}
+          onClose={() => setSelectedReportForPatientView(null)}
+        />
       )}
     </div>
   );

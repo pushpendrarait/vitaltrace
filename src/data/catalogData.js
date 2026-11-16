@@ -286,3 +286,4 @@ export const EMPANELED_PHARMACY_PARTNERS = [
     logoText: "JanAushadhi"
   }
 ];
+

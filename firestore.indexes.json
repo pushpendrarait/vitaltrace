@@ -1,0 +1,55 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "medical_records",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "uhid", "order": "ASCENDING" },
+        { "fieldPath": "created_at", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "medical_records",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "uhid", "order": "ASCENDING" },
+        { "fieldPath": "type", "order": "ASCENDING" },
+        { "fieldPath": "created_at", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "consent_logs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "uhid", "order": "ASCENDING" },
+        { "fieldPath": "created_at", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "consent_logs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "uhid", "order": "ASCENDING" },
+        { "fieldPath": "is_break_glass", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "hospitalizations",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "uhid", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "diagnostic_orders",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "uhid", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}
+

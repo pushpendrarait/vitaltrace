@@ -4136,3 +4136,62 @@ body {
   font-size: 0.78rem;
   color: #cbd5e1;
 }
+
+
+/* Backend Status Strip */
+.backend-status-strip {
+  background: linear-gradient(90deg, rgba(6, 182, 212, 0.08), rgba(16, 185, 129, 0.08));
+  border-bottom: 1px solid rgba(44, 68, 104, 0.4);
+  padding: 8px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.dot-online {
+  background-color: #10b981;
+  box-shadow: 0 0 8px #10b981;
+}
+
+.dot-offline {
+  background-color: #f59e0b;
+  box-shadow: 0 0 8px #f59e0b;
+}
+
+.status-text {
+  color: var(--text-main);
+}
+
+.status-badges {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.badge-pill {
+  background: rgba(17, 26, 46, 0.7);
+  border: 1px solid var(--border-light);
+  color: var(--cyan);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}

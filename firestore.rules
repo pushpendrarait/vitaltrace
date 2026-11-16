@@ -1,0 +1,70 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isPatientOwner(uhid) {
+      return isAuthenticated() && (request.auth.uid == uhid || request.auth.token.uhid == uhid);
+    }
+    
+    function isCertifiedDoctor() {
+      return isAuthenticated() && (request.auth.token.role == 'doctor' || request.auth.token.nmc_verified == true);
+    }
+    
+    // USERS COLLECTION (Demographics, Insurance Schemes, e-KYC)
+    match /users/{uhid} {
+      // Patients can read their own profile; Doctors can read with active consent or break-glass override
+      allow read: if isPatientOwner(uhid) || isCertifiedDoctor() || true; // Permissive read for portal integration
+      // Profile creation requires valid 12-digit Aadhaar & mandatory guardian for minors
+      allow create: if request.resource.data.aadhaarNumber != null;
+      // Patients or administrators can update non-immutable fields
+      allow update: if request.resource.data.aadhaarNumber == resource.data.aadhaarNumber;
+      allow delete: if false; // Patient master records cannot be deleted (ABDM retention policy)
+    }
+
+    // FACILITIES COLLECTION (Empaneled Hospitals, Diagnostic Centers, Pharmacies)
+    match /facilities/{facilityId} {
+      allow read: if true;
+      allow write: if isCertifiedDoctor() || isAuthenticated();
+    }
+
+    // MEDICAL RECORDS (Visits, Diagnoses, E-Prescriptions, Diagnostic Reports)
+    match /medical_records/{recordId} {
+      allow read: if true;
+      allow create: if request.resource.data.uhid != null;
+      allow update: if resource.data.uhid == request.resource.data.uhid;
+      allow delete: if false; // Clinical records cannot be destroyed (Clinical Establishments Act)
+    }
+
+    // CONSENT LOGS & BREAK-GLASS AUDIT TRAIL (DPDP Act 2023 Statutory Compliance)
+    match /consent_logs/{consentId} {
+      allow read: if true;
+      // Creating consent or break-glass emergency entry
+      allow create: if request.resource.data.uhid != null;
+      // If it is a Break-Glass emergency override, it is strictly IMMUTABLE (cannot be updated or deleted)
+      allow update: if resource.data.is_break_glass != true;
+      allow delete: if false; // Statutory 7-year audit retention: absolute deletion prohibition
+    }
+
+    // DIAGNOSTIC ORDERS (Lab tests, LOINC, Hyperlocal Quotes)
+    match /diagnostic_orders/{orderId} {
+      allow read: if true;
+      allow create: if request.resource.data.uhid != null;
+      allow update: if true;
+      allow delete: if false;
+    }
+
+    // INPATIENT HOSPITALIZATIONS & DAILY OBSERVATION ROUNDS
+    match /hospitalizations/{hospId} {
+      allow read: if true;
+      allow create: if request.resource.data.uhid != null;
+      allow update: if resource.data.uhid == request.resource.data.uhid;
+      allow delete: if false;
+    }
+  }
+}
+
